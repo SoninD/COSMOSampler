@@ -1,0 +1,7 @@
+core.spectral\_model module
+============================
+
+.. automodule:: core.spectral_model
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+core.fitter\_model module
+==========================
+
+.. automodule:: core.fitter_model
+   :members:
+   :undoc-members:
+   :show-inheritance:

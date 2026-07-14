@@ -1,0 +1,7 @@
+core.paths module
+==================
+
+.. automodule:: core.paths
+   :members:
+   :undoc-members:
+   :show-inheritance:

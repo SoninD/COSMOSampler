@@ -1,0 +1,7 @@
+core.likelihoods module
+========================
+
+.. automodule:: core.likelihoods
+   :members:
+   :undoc-members:
+   :show-inheritance:

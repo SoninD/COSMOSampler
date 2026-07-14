@@ -1,0 +1,29 @@
+{
+  "command": "run",
+  "mode": "sigma_int",
+  "n_walkers": 30,
+  "n_steps": 500,
+  "n_discard": 200,
+  "n_cloud_points": 100,
+  "cloud_seed": 42,
+  "t90min": 2.0,
+  "t90max": 1000.0,
+  "grb_z_min": 1.0,
+  "grb_z_max": 10.0,
+  "ep_min": 0.0,
+  "ep_max": 1000.0,
+  "ep_err_max": 100.0,
+  "sn_z_min": 0.0,
+  "sn_z_max": 2.3,
+  "swift1": null,
+  "swift2": null,
+  "pantheon": null,
+  "fix": ["Ok0=0"],
+  "resume": {
+    "path": "results\\run_example",
+    "extra_steps": 0
+  },
+  "analyze": {
+    "path": "results\\run_example\\analysis"
+  }
+}

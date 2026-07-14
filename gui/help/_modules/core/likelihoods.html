@@ -1,0 +1,228 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.likelihoods &mdash; COSMOSampler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            COSMOSampler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Содержание</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Модули проекта</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">COSMOSampler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.likelihoods</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.likelihoods</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Реализации функций правдоподобия для совместного анализа сверхновых и GRB.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core._numba_core</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">mu_amati_mc_mode</span><span class="p">,</span> <span class="n">mu_amati_with_errors</span><span class="p">,</span>
+                              <span class="n">loglike_grb_asym</span><span class="p">,</span> <span class="n">chi2_grb_mc_mode</span><span class="p">,</span> <span class="n">chi2_sn</span><span class="p">)</span>
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+
+
+<div class="viewcode-block" id="BaseLikelihood">
+<a class="viewcode-back" href="../../core.likelihoods.html#core.likelihoods.BaseLikelihood">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BaseLikelihood</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Абстрактный базовый класс для вычислителя правдоподобия.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="BaseLikelihood.log_probability">
+<a class="viewcode-back" href="../../core.likelihoods.html#core.likelihoods.BaseLikelihood.log_probability">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">log_probability</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">all_names</span><span class="p">,</span> <span class="n">defaults</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Возвращает логарифмическую вероятность (или -inf).&quot;&quot;&quot;</span>
+        <span class="o">...</span></div>
+</div>
+
+
+<div class="viewcode-block" id="AmatiSNLikelihood">
+<a class="viewcode-back" href="../../core.likelihoods.html#core.likelihoods.AmatiSNLikelihood">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AmatiSNLikelihood</span><span class="p">(</span><span class="n">BaseLikelihood</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Совместное правдоподобие сверхновых (SN) и гамма-всплесков (GRB)</span>
+<span class="sd">    с использованием корреляции Амати.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cosmo : Cosmology</span>
+<span class="sd">        Космологическая модель.</span>
+<span class="sd">    arrays : dict</span>
+<span class="sd">        Словарь с подготовленными плоскими массивами (z_sn, mu_sn, ...).</span>
+<span class="sd">    is_cloud : bool</span>
+<span class="sd">        Используется ли облачный режим для GRB.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cosmo</span><span class="p">,</span> <span class="n">arrays</span><span class="p">,</span> <span class="n">is_cloud</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cosmo</span> <span class="o">=</span> <span class="n">cosmo</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arrays</span> <span class="o">=</span> <span class="n">arrays</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_cloud</span> <span class="o">=</span> <span class="n">is_cloud</span>
+
+<div class="viewcode-block" id="AmatiSNLikelihood.log_probability">
+<a class="viewcode-back" href="../../core.likelihoods.html#core.likelihoods.AmatiSNLikelihood.log_probability">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">log_probability</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">all_names</span><span class="p">,</span> <span class="n">defaults</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Вычислить логарифм совместного правдоподобия SN + GRB.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        theta : ndarray</span>
+<span class="sd">            Текущие значения варьируемых параметров.</span>
+<span class="sd">        varying : list of str</span>
+<span class="sd">            Имена варьируемых параметров.</span>
+<span class="sd">        fixed_vals : dict</span>
+<span class="sd">            Словарь фиксированных параметров.</span>
+<span class="sd">        all_names : list of str</span>
+<span class="sd">            Полный список имён параметров (для совместимости).</span>
+<span class="sd">        defaults : list</span>
+<span class="sd">            Значения по умолчанию (не используются).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        loglike : float</span>
+<span class="sd">            Логарифмическая вероятность.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Собираем полный словарь параметров</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">fixed_vals</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">varying</span><span class="p">,</span> <span class="n">theta</span><span class="p">):</span>
+            <span class="n">p</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+
+        <span class="c1"># Обновляем космологию с использованием Ode</span>
+        <span class="n">H0</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;H0&#39;</span><span class="p">,</span> <span class="mf">70.0</span><span class="p">)</span>
+        <span class="n">Ode0</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Ode0&#39;</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">Ok0</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Ok0&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cosmo</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">H0</span><span class="o">=</span><span class="n">H0</span><span class="p">,</span> <span class="n">Ode</span><span class="o">=</span><span class="n">Ode0</span><span class="p">,</span> <span class="n">w</span><span class="o">=</span><span class="n">w</span><span class="p">,</span> <span class="n">Ok</span><span class="o">=</span><span class="n">Ok0</span><span class="p">)</span>
+
+        <span class="n">loglike</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">arrays</span>
+
+        <span class="c1"># --- Сверхновые ---</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="s1">&#39;z_sn&#39;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">mu_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cosmo</span><span class="o">.</span><span class="n">mu</span><span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="s1">&#39;z_sn&#39;</span><span class="p">])</span>
+            <span class="n">chi2</span> <span class="o">=</span> <span class="n">chi2_sn</span><span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="s1">&#39;mu_sn&#39;</span><span class="p">],</span> <span class="n">mu_model</span><span class="p">,</span> <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;dmu_sn&#39;</span><span class="p">])</span>
+            <span class="n">loglike</span> <span class="o">+=</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">chi2</span>
+
+        <span class="c1"># --- Гамма-всплески ---</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="s1">&#39;z_grb&#39;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+            <span class="n">b</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">)</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">mu_cosmo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cosmo</span><span class="o">.</span><span class="n">mu</span><span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="s1">&#39;z_grb&#39;</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_cloud</span><span class="p">:</span>
+                <span class="n">mu_amati</span> <span class="o">=</span> <span class="n">mu_amati_mc_mode</span><span class="p">(</span>
+                    <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;z_grb&#39;</span><span class="p">],</span> <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;sbolo_grb&#39;</span><span class="p">],</span> <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;e_pi_grb&#39;</span><span class="p">],</span>
+                    <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">k</span>
+                <span class="p">)</span>
+                <span class="n">residuals</span> <span class="o">=</span> <span class="n">mu_cosmo</span> <span class="o">-</span> <span class="n">mu_amati</span>
+                <span class="n">chi2_raw</span> <span class="o">=</span> <span class="n">chi2_grb_mc_mode</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span>
+                <span class="n">n_orig</span> <span class="o">=</span> <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;n_grb_orig&#39;</span><span class="p">]</span>
+                <span class="n">n_total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="s1">&#39;z_grb&#39;</span><span class="p">])</span>
+                <span class="n">chi2</span> <span class="o">=</span> <span class="n">chi2_raw</span> <span class="o">*</span> <span class="p">(</span><span class="n">n_orig</span> <span class="o">/</span> <span class="n">n_total</span><span class="p">)</span>
+                <span class="n">loglike</span> <span class="o">+=</span> <span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">chi2</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">sigma_int</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sigma_int&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+                <span class="n">mu_amati</span><span class="p">,</span> <span class="n">err_l</span><span class="p">,</span> <span class="n">err_u</span> <span class="o">=</span> <span class="n">mu_amati_with_errors</span><span class="p">(</span>
+                    <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;z_grb&#39;</span><span class="p">],</span> <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;sbolo_grb&#39;</span><span class="p">],</span> <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;sbolo_err_grb&#39;</span><span class="p">],</span>
+                    <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;e_pi_grb&#39;</span><span class="p">],</span> <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;e_pi_err_l_grb&#39;</span><span class="p">],</span> <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;e_pi_err_u_grb&#39;</span><span class="p">],</span>
+                    <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">k</span>
+                <span class="p">)</span>
+                <span class="n">residuals</span> <span class="o">=</span> <span class="n">mu_cosmo</span> <span class="o">-</span> <span class="n">mu_amati</span>
+                <span class="n">err_l_total</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">err_l</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">sigma_int</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">err_u_total</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">err_u</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">sigma_int</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">loglike</span> <span class="o">+=</span> <span class="n">loglike_grb_asym</span><span class="p">(</span><span class="n">residuals</span><span class="p">,</span> <span class="n">err_l_total</span><span class="p">,</span> <span class="n">err_u_total</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">loglike</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">loglike</span><span class="p">)</span> <span class="k">else</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Daniel-Erkki Sonin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

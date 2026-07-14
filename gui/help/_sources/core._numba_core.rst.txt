@@ -1,0 +1,7 @@
+core.\_numba\_core module
+==========================
+
+.. automodule:: core._numba_core
+   :members:
+   :undoc-members:
+   :show-inheritance:

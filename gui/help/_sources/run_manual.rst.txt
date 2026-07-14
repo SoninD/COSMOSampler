@@ -1,0 +1,7 @@
+run\_manual module
+==================
+
+.. automodule:: run_manual
+   :members:
+   :show-inheritance:
+   :undoc-members:

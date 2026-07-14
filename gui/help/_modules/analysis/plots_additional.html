@@ -1,0 +1,468 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>analysis.plots_additional &mdash; COSMOSampler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            COSMOSampler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Содержание</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Модули проекта</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">COSMOSampler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">analysis.plots_additional</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for analysis.plots_additional</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Дополнительные графики: облака точек MC, диаграмма T90–EH.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.distributions</span><span class="w"> </span><span class="kn">import</span> <span class="n">SplitNormal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProjectPaths</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core</span><span class="w"> </span><span class="kn">import</span> <span class="n">constants</span> <span class="k">as</span> <span class="n">const</span>
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="AdditionalPlotter">
+<a class="viewcode-back" href="../../analysis.plots_additional.html#analysis.plots_additional.AdditionalPlotter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AdditionalPlotter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Построение дополнительных графиков, не связанных напрямую с результатами MCMC.</span>
+
+<span class="sd">    Позволяет визуализировать облака точек, сгенерированные для GRB,</span>
+<span class="sd">    а также строить диаграмму T90–EH.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    output_dir : pathlib.Path</span>
+<span class="sd">        Папка для сохранения графиков (по умолчанию &#39;additional_plots&#39;).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Инициализировать плоттер и создать папку для сохранения.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_dir</span> <span class="o">=</span> <span class="n">ProjectPaths</span><span class="p">()</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s1">&#39;additional_plots&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Внутренние методы</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_split_normal_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Извлечь параметры SplitNormal для одного GRB.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        entry : dict</span>
+<span class="sd">            Словарь с ключами &#39;sbolo&#39;, &#39;sbolo_err&#39;, &#39;e_pi&#39;, &#39;e_pi_err_l&#39;, &#39;e_pi_err_u&#39;.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dist_s : SplitNormal</span>
+<span class="sd">            Распределение для S_bolo в log-пространстве.</span>
+<span class="sd">        dist_e : SplitNormal</span>
+<span class="sd">            Распределение для E_pi в log-пространстве.</span>
+<span class="sd">        sbolo, sbolo_err, e_pi, e_pi_err_l, e_pi_err_u : float</span>
+<span class="sd">            Исходные значения.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sbolo</span> <span class="o">=</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo&#39;</span><span class="p">]</span>
+        <span class="n">sbolo_err</span> <span class="o">=</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo_err&#39;</span><span class="p">]</span>
+        <span class="n">e_pi</span> <span class="o">=</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi&#39;</span><span class="p">]</span>
+        <span class="n">e_pi_err_l</span> <span class="o">=</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi_err_l&#39;</span><span class="p">]</span>
+        <span class="n">e_pi_err_u</span> <span class="o">=</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi_err_u&#39;</span><span class="p">]</span>
+
+        <span class="n">log_s_med</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">sbolo</span><span class="p">)</span>
+        <span class="n">log_s_err_left</span> <span class="o">=</span> <span class="n">log_s_med</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">sbolo</span> <span class="o">-</span> <span class="n">sbolo_err</span><span class="p">)</span>
+        <span class="n">log_s_err_right</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">sbolo</span> <span class="o">+</span> <span class="n">sbolo_err</span><span class="p">)</span> <span class="o">-</span> <span class="n">log_s_med</span>
+
+        <span class="n">log_e_med</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">e_pi</span><span class="p">)</span>
+        <span class="n">log_e_err_left</span> <span class="o">=</span> <span class="n">log_e_med</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">e_pi</span> <span class="o">-</span> <span class="n">e_pi_err_l</span><span class="p">)</span>
+        <span class="n">log_e_err_right</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">e_pi</span> <span class="o">+</span> <span class="n">e_pi_err_u</span><span class="p">)</span> <span class="o">-</span> <span class="n">log_e_med</span>
+
+        <span class="n">dist_s</span> <span class="o">=</span> <span class="n">SplitNormal</span><span class="p">(</span><span class="n">median</span><span class="o">=</span><span class="n">log_s_med</span><span class="p">,</span> <span class="n">lower_err</span><span class="o">=</span><span class="n">log_s_err_left</span><span class="p">,</span> <span class="n">upper_err</span><span class="o">=</span><span class="n">log_s_err_right</span><span class="p">)</span>
+        <span class="n">dist_e</span> <span class="o">=</span> <span class="n">SplitNormal</span><span class="p">(</span><span class="n">median</span><span class="o">=</span><span class="n">log_e_med</span><span class="p">,</span> <span class="n">lower_err</span><span class="o">=</span><span class="n">log_e_err_left</span><span class="p">,</span> <span class="n">upper_err</span><span class="o">=</span><span class="n">log_e_err_right</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dist_s</span><span class="p">,</span> <span class="n">dist_e</span><span class="p">,</span> <span class="n">sbolo</span><span class="p">,</span> <span class="n">sbolo_err</span><span class="p">,</span> <span class="n">e_pi</span><span class="p">,</span> <span class="n">e_pi_err_l</span><span class="p">,</span> <span class="n">e_pi_err_u</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_histogram_with_pdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">split_normal</span><span class="p">,</span> <span class="n">orientation</span><span class="o">=</span><span class="s1">&#39;vertical&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Нарисовать гистограмму и теоретическую PDF SplitNormal.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ax : matplotlib.axes.Axes</span>
+<span class="sd">            Ось для рисования.</span>
+<span class="sd">        values : ndarray</span>
+<span class="sd">            Массив значений для гистограммы.</span>
+<span class="sd">        split_normal : SplitNormal</span>
+<span class="sd">            Объект распределения.</span>
+<span class="sd">        orientation : str, optional</span>
+<span class="sd">            &#39;vertical&#39; или &#39;horizontal&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">vmin</span><span class="p">,</span> <span class="n">vmax</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">values</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">vmin</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">vmax</span><span class="p">),</span> <span class="mi">50</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span> <span class="n">density</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                <span class="n">orientation</span><span class="o">=</span><span class="n">orientation</span><span class="p">)</span>
+        <span class="n">grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">vmin</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">vmax</span><span class="p">),</span> <span class="mi">200</span><span class="p">)</span>
+        <span class="n">pdf</span> <span class="o">=</span> <span class="n">split_normal</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">grid</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="n">grid</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">orientation</span> <span class="o">==</span> <span class="s1">&#39;vertical&#39;</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">pdf</span><span class="p">,</span> <span class="s1">&#39;b-&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">pdf</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="s1">&#39;b-&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Публичные методы построения</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+<div class="viewcode-block" id="AdditionalPlotter.plot_clouds">
+<a class="viewcode-back" href="../../analysis.plots_additional.html#analysis.plots_additional.AdditionalPlotter.plot_clouds">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_clouds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clouds</span><span class="p">,</span> <span class="n">grb_names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">log_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">save</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">save_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">axes_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Универсальная отрисовка облаков точек.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        clouds : list of dict</span>
+<span class="sd">            Список словарей с полями &#39;GRBname&#39;, &#39;sbolo_mc&#39;, &#39;e_pi_mc&#39;, а также</span>
+<span class="sd">            исходными &#39;sbolo&#39;, &#39;sbolo_err&#39;, &#39;e_pi&#39;, &#39;e_pi_err_l&#39;, &#39;e_pi_err_u&#39;.</span>
+<span class="sd">        grb_names : str, list of str or None, optional</span>
+<span class="sd">            Имена GRB для отображения. Если None – все GRB серыми облаками.</span>
+<span class="sd">            Если одно имя – детальный график с гистограммами.</span>
+<span class="sd">            Если несколько – выбранные GRB цветными облаками на фоне всех.</span>
+<span class="sd">        log_scale : bool, optional</span>
+<span class="sd">            Использовать логарифмический масштаб осей.</span>
+<span class="sd">        save : bool, optional</span>
+<span class="sd">            Сохранить ли график в файл.</span>
+<span class="sd">        save_path : str or Path, optional</span>
+<span class="sd">            Путь для сохранения (по умолчанию в self.output_dir).</span>
+<span class="sd">        ax : matplotlib.axes.Axes, optional</span>
+<span class="sd">            Ось для рисования (только для режимов &#39;all&#39; и &#39;selected&#39;).</span>
+<span class="sd">        axes_dict : dict, optional</span>
+<span class="sd">            Словарь с ключами &#39;main&#39;, &#39;top&#39;, &#39;right&#39; для режима одного GRB.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        fig : matplotlib.figure.Figure or None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">clouds</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Облака не переданы.&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">grb_names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_all_grbs</span><span class="p">(</span><span class="n">clouds</span><span class="p">,</span> <span class="n">log_scale</span><span class="p">,</span> <span class="n">save</span><span class="p">,</span> <span class="n">save_path</span><span class="p">,</span> <span class="n">ax</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">grb_names</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_single_grb</span><span class="p">(</span><span class="n">clouds</span><span class="p">,</span> <span class="n">grb_names</span><span class="p">,</span> <span class="n">log_scale</span><span class="p">,</span> <span class="n">save</span><span class="p">,</span> <span class="n">save_path</span><span class="p">,</span> <span class="n">axes_dict</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">grb_names</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">grb_names</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">grb_names</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_single_grb</span><span class="p">(</span><span class="n">clouds</span><span class="p">,</span> <span class="n">grb_names</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">log_scale</span><span class="p">,</span> <span class="n">save</span><span class="p">,</span> <span class="n">save_path</span><span class="p">,</span> <span class="n">axes_dict</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plot_selected_grbs</span><span class="p">(</span><span class="n">clouds</span><span class="p">,</span> <span class="n">grb_names</span><span class="p">,</span> <span class="n">log_scale</span><span class="p">,</span> <span class="n">save</span><span class="p">,</span> <span class="n">save_path</span><span class="p">,</span> <span class="n">ax</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;grb_names должен быть строкой, списком строк или None.&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_all_grbs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clouds</span><span class="p">,</span> <span class="n">log_scale</span><span class="p">,</span> <span class="n">save</span><span class="p">,</span> <span class="n">save_path</span><span class="p">,</span> <span class="n">ax</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Нарисовать все GRB серыми облаками.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+            <span class="n">user_ax</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">figure</span>
+            <span class="n">user_ax</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="n">first_cloud</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">n_points</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">clouds</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;sbolo_mc&#39;</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">clouds</span><span class="p">:</span>
+            <span class="n">lbl</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;MC clouds (N=</span><span class="si">{</span><span class="n">n_points</span><span class="si">}</span><span class="s1">)&#39;</span> <span class="k">if</span> <span class="n">first_cloud</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo_mc&#39;</span><span class="p">],</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi_mc&#39;</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+                       <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">lbl</span><span class="p">)</span>
+            <span class="n">first_cloud</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="n">first</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">clouds</span><span class="p">:</span>
+            <span class="n">lbl</span> <span class="o">=</span> <span class="s1">&#39;original_grb&#39;</span> <span class="k">if</span> <span class="n">first</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo&#39;</span><span class="p">],</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi&#39;</span><span class="p">],</span>
+                        <span class="n">xerr</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo_err&#39;</span><span class="p">],</span>
+                        <span class="n">yerr</span><span class="o">=</span><span class="p">[[</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi_err_l&#39;</span><span class="p">]],</span> <span class="p">[</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi_err_u&#39;</span><span class="p">]]],</span>
+                        <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">capsize</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">lbl</span><span class="p">)</span>
+            <span class="n">first</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="n">log_scale</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;S_bolo&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;E_pi&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;All GRBs: clouds &amp; observed errors&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">user_ax</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">save</span><span class="p">:</span>
+                <span class="n">fname</span> <span class="o">=</span> <span class="n">save_path</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_dir</span> <span class="o">/</span> <span class="s1">&#39;clouds_all_grbs.png&#39;</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">150</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;График облаков сохранён: </span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_selected_grbs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clouds</span><span class="p">,</span> <span class="n">grb_names</span><span class="p">,</span> <span class="n">log_scale</span><span class="p">,</span> <span class="n">save</span><span class="p">,</span> <span class="n">save_path</span><span class="p">,</span> <span class="n">ax</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Нарисовать выбранные GRB цветами на фоне всех серых точек.&quot;&quot;&quot;</span>
+        <span class="n">selected</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">clouds</span> <span class="k">if</span> <span class="n">e</span><span class="p">[</span><span class="s1">&#39;GRBname&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">grb_names</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">selected</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Ни один из указанных GRB не найден в облаках.&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+            <span class="n">user_ax</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">figure</span>
+            <span class="n">user_ax</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">clouds</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo&#39;</span><span class="p">],</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi&#39;</span><span class="p">],</span>
+                        <span class="n">xerr</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo_err&#39;</span><span class="p">],</span>
+                        <span class="n">yerr</span><span class="o">=</span><span class="p">[[</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi_err_l&#39;</span><span class="p">]],</span> <span class="p">[</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi_err_u&#39;</span><span class="p">]]],</span>
+                        <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;lightgray&#39;</span><span class="p">,</span> <span class="n">capsize</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
+                        <span class="n">markersize</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">elinewidth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+        <span class="n">colors</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">tab10</span><span class="o">.</span><span class="n">colors</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">entry</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">selected</span><span class="p">):</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="n">colors</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">colors</span><span class="p">)]</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo_mc&#39;</span><span class="p">],</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi_mc&#39;</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo&#39;</span><span class="p">],</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi&#39;</span><span class="p">],</span>
+                        <span class="n">xerr</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo_err&#39;</span><span class="p">],</span>
+                        <span class="n">yerr</span><span class="o">=</span><span class="p">[[</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi_err_l&#39;</span><span class="p">]],</span> <span class="p">[</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi_err_u&#39;</span><span class="p">]]],</span>
+                        <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">capsize</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">elinewidth</span><span class="o">=</span><span class="mf">1.2</span><span class="p">,</span>
+                        <span class="n">label</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;GRBname&#39;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">log_scale</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;S_bolo&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;E_pi&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Selected GRBs (clouds) with all original data&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">user_ax</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">save</span><span class="p">:</span>
+                <span class="n">fname</span> <span class="o">=</span> <span class="n">save_path</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_dir</span> <span class="o">/</span> <span class="s1">&#39;clouds_selected.png&#39;</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">150</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;График выбранных GRB сохранён: </span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_plot_single_grb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">clouds</span><span class="p">,</span> <span class="n">grb_name</span><span class="p">,</span> <span class="n">log_scale</span><span class="p">,</span> <span class="n">save</span><span class="p">,</span> <span class="n">save_path</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Детальный график одного GRB: scatter + гистограммы + PDF.&quot;&quot;&quot;</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">clouds</span> <span class="k">if</span> <span class="n">e</span><span class="p">[</span><span class="s1">&#39;GRBname&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">grb_name</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">entry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;GRB </span><span class="si">{</span><span class="n">grb_name</span><span class="si">}</span><span class="s2"> не найден в облаках.&quot;</span><span class="p">)</span>
+
+        <span class="n">dist_s</span><span class="p">,</span> <span class="n">dist_e</span><span class="p">,</span> <span class="n">sbolo</span><span class="p">,</span> <span class="n">sbolo_err</span><span class="p">,</span> <span class="n">e_pi</span><span class="p">,</span> <span class="n">e_pi_err_l</span><span class="p">,</span> <span class="n">e_pi_err_u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_split_normal_params</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ax_main</span><span class="p">,</span> <span class="n">ax_top</span><span class="p">,</span> <span class="n">ax_right</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="s1">&#39;main&#39;</span><span class="p">],</span> <span class="n">axes</span><span class="p">[</span><span class="s1">&#39;top&#39;</span><span class="p">],</span> <span class="n">axes</span><span class="p">[</span><span class="s1">&#39;right&#39;</span><span class="p">]</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">ax_main</span><span class="o">.</span><span class="n">figure</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+            <span class="n">gs</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_gridspec</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">width_ratios</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">height_ratios</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+                                  <span class="n">left</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span>
+                                  <span class="n">wspace</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">hspace</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
+            <span class="n">ax_main</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="n">gs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+            <span class="n">ax_top</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="n">gs</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">sharex</span><span class="o">=</span><span class="n">ax_main</span><span class="p">)</span>
+            <span class="n">ax_right</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="n">gs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">sharey</span><span class="o">=</span><span class="n">ax_main</span><span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">ax_top</span><span class="o">.</span><span class="n">get_xticklabels</span><span class="p">(),</span> <span class="n">visible</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">setp</span><span class="p">(</span><span class="n">ax_right</span><span class="o">.</span><span class="n">get_yticklabels</span><span class="p">(),</span> <span class="n">visible</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="n">n_points</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo_mc&#39;</span><span class="p">])</span>
+        <span class="n">ax_main</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo_mc&#39;</span><span class="p">],</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi_mc&#39;</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+                        <span class="n">color</span><span class="o">=</span><span class="s1">&#39;gray&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;MC (N=</span><span class="si">{</span><span class="n">n_points</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">)</span>
+        <span class="n">ax_main</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">sbolo</span><span class="p">,</span> <span class="n">e_pi</span><span class="p">,</span>
+                         <span class="n">xerr</span><span class="o">=</span><span class="n">sbolo_err</span><span class="p">,</span>
+                         <span class="n">yerr</span><span class="o">=</span><span class="p">[[</span><span class="n">e_pi_err_l</span><span class="p">],</span> <span class="p">[</span><span class="n">e_pi_err_u</span><span class="p">]],</span>
+                         <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">,</span> <span class="n">capsize</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Observed&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">log_scale</span><span class="p">:</span>
+            <span class="n">ax_main</span><span class="o">.</span><span class="n">set_xscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+            <span class="n">ax_main</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+        <span class="n">ax_main</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;S_bolo&#39;</span><span class="p">)</span>
+        <span class="n">ax_main</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;E_pi&#39;</span><span class="p">)</span>
+        <span class="n">ax_main</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+        <span class="n">ax_main</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">FuncFormatter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">_</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;$10^</span><span class="se">{{</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">x</span><span class="p">))</span><span class="si">}</span><span class="se">}}</span><span class="s1">$&#39;</span> <span class="k">if</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span><span class="p">))</span>
+        <span class="n">ax_main</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_major_formatter</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">FuncFormatter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">y</span><span class="p">,</span> <span class="n">_</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;$10^</span><span class="se">{{</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">y</span><span class="p">))</span><span class="si">}</span><span class="se">}}</span><span class="s1">$&#39;</span> <span class="k">if</span> <span class="n">y</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s1">&#39;&#39;</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_plot_histogram_with_pdf</span><span class="p">(</span><span class="n">ax_top</span><span class="p">,</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo_mc&#39;</span><span class="p">],</span> <span class="n">dist_s</span><span class="p">,</span> <span class="s1">&#39;vertical&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_plot_histogram_with_pdf</span><span class="p">(</span><span class="n">ax_right</span><span class="p">,</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi_mc&#39;</span><span class="p">],</span> <span class="n">dist_e</span><span class="p">,</span> <span class="s1">&#39;horizontal&#39;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">val</span><span class="p">,</span> <span class="n">ls</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">([</span><span class="n">sbolo</span><span class="p">,</span> <span class="n">sbolo</span> <span class="o">-</span> <span class="n">sbolo_err</span><span class="p">,</span> <span class="n">sbolo</span> <span class="o">+</span> <span class="n">sbolo_err</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="s1">&#39;--&#39;</span><span class="p">]):</span>
+            <span class="n">ax_top</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="n">ls</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+            <span class="n">ax_main</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="n">ls</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">val</span><span class="p">,</span> <span class="n">ls</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">([</span><span class="n">e_pi</span><span class="p">,</span> <span class="n">e_pi</span> <span class="o">-</span> <span class="n">e_pi_err_l</span><span class="p">,</span> <span class="n">e_pi</span> <span class="o">+</span> <span class="n">e_pi_err_u</span><span class="p">],</span> <span class="p">[</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="s1">&#39;--&#39;</span><span class="p">]):</span>
+            <span class="n">ax_right</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="n">ls</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+            <span class="n">ax_main</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="n">ls</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+        <span class="n">ax_main</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;GRB </span><span class="si">{</span><span class="n">grb_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">save</span><span class="p">:</span>
+                <span class="n">fname</span> <span class="o">=</span> <span class="n">save_path</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">&#39;cloud_</span><span class="si">{</span><span class="n">grb_name</span><span class="si">}</span><span class="s1">.png&#39;</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">150</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;График GRB </span><span class="si">{</span><span class="n">grb_name</span><span class="si">}</span><span class="s2"> сохранён: </span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">ax_main</span><span class="p">,</span> <span class="n">ax_top</span><span class="p">,</span> <span class="n">ax_right</span><span class="p">)</span>
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Диаграмма T90–EH</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+<div class="viewcode-block" id="AdditionalPlotter.plot_t90_eh">
+<a class="viewcode-back" href="../../analysis.plots_additional.html#analysis.plots_additional.AdditionalPlotter.plot_t90_eh">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_t90_eh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grb_df</span><span class="p">,</span> <span class="n">cosmo</span><span class="p">,</span> <span class="n">log_scale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">save_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Построить диаграмму T90 – EH.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        grb_df : pandas.DataFrame</span>
+<span class="sd">            Таблица с колонками &#39;z&#39;, &#39;T90&#39;, &#39;sbolo&#39;, &#39;e_pi&#39;.</span>
+<span class="sd">        cosmo : Cosmology</span>
+<span class="sd">            Космологическая модель.</span>
+<span class="sd">        log_scale : bool, optional</span>
+<span class="sd">            Логарифмический масштаб.</span>
+<span class="sd">        save : bool, optional</span>
+<span class="sd">            Сохранить ли график.</span>
+<span class="sd">        save_path : str, optional</span>
+<span class="sd">            Путь для сохранения.</span>
+<span class="sd">        ax : matplotlib.axes.Axes, optional</span>
+<span class="sd">            Ось для рисования.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        fig : matplotlib.figure.Figure</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="n">grb_df</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">sbolo</span> <span class="o">=</span> <span class="n">grb_df</span><span class="p">[</span><span class="s1">&#39;sbolo&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">e_pi</span> <span class="o">=</span> <span class="n">grb_df</span><span class="p">[</span><span class="s1">&#39;e_pi&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">t90</span> <span class="o">=</span> <span class="n">grb_df</span><span class="p">[</span><span class="s1">&#39;T90&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="n">d_E_mpc</span> <span class="o">=</span> <span class="n">cosmo</span><span class="o">.</span><span class="n">d_E</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">d_E_cm</span> <span class="o">=</span> <span class="n">d_E_mpc</span> <span class="o">*</span> <span class="n">const</span><span class="o">.</span><span class="n">MPC_IN_CM</span>
+        <span class="n">fluence</span> <span class="o">=</span> <span class="n">sbolo</span> <span class="o">*</span> <span class="n">t90</span>
+        <span class="n">E_iso</span> <span class="o">=</span> <span class="mf">4.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">d_E_cm</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">fluence</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">z</span><span class="p">)</span>
+        <span class="n">E_iso_51</span> <span class="o">=</span> <span class="n">E_iso</span> <span class="o">/</span> <span class="mf">1e51</span>
+
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">E_iso_51</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">e_pi</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">E_iso_51</span><span class="p">,</span> <span class="n">e_pi</span><span class="p">,</span> <span class="n">t90</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">E_iso_51</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">e_pi</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">t90</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">z</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+        <span class="n">EH</span> <span class="o">=</span> <span class="p">(</span><span class="n">e_pi</span> <span class="o">/</span> <span class="mf">100.0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">E_iso_51</span> <span class="o">**</span> <span class="mf">0.4</span><span class="p">)</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">EH</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">t90</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">t90</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">t90</span><span class="p">,</span> <span class="n">EH</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">t90</span><span class="p">[</span><span class="n">valid</span><span class="p">],</span> <span class="n">EH</span><span class="p">[</span><span class="n">valid</span><span class="p">],</span> <span class="n">z</span><span class="p">[</span><span class="n">valid</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+            <span class="n">user_ax</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fig</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">figure</span>
+            <span class="n">user_ax</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="n">sc</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">t90</span><span class="p">,</span> <span class="n">EH</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="n">z</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="s1">&#39;k&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">log_scale</span><span class="p">:</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;T90 [s]&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;EH [ (E_pi/100 keV) / (E_iso/10^51 erg)^0.4 ]&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;T90 – EH diagram&#39;</span><span class="p">)</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">sc</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;z&#39;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">user_ax</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">save</span><span class="p">:</span>
+                <span class="n">fname</span> <span class="o">=</span> <span class="n">save_path</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_dir</span> <span class="o">/</span> <span class="s1">&#39;t90_eh.png&#39;</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">150</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Диаграмма T90-EH сохранена: </span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Daniel-Erkki Sonin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

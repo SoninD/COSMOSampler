@@ -1,0 +1,192 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.likelihoods module &mdash; COSMOSampler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.spectral_model module" href="core.spectral_model.html" />
+    <link rel="prev" title="core.generators module" href="core.generators.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            COSMOSampler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Содержание</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Модули проекта</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="core._numba_core.html">core._numba_core module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.constants.html">core.constants module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.paths.html">core.paths module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.cosmology.html">core.cosmology module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.distributions.html">core.distributions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.generators.html">core.generators module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">core.likelihoods module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#core.likelihoods.AmatiSNLikelihood"><code class="docutils literal notranslate"><span class="pre">AmatiSNLikelihood</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#core.likelihoods.AmatiSNLikelihood.log_probability"><code class="docutils literal notranslate"><span class="pre">AmatiSNLikelihood.log_probability()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#core.likelihoods.BaseLikelihood"><code class="docutils literal notranslate"><span class="pre">BaseLikelihood</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#core.likelihoods.BaseLikelihood.log_probability"><code class="docutils literal notranslate"><span class="pre">BaseLikelihood.log_probability()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.spectral_model.html">core.spectral_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.fitter_model.html">core.fitter_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.plots_result.html">analysis.plots_result module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.plots_spectra.html">analysis.plots_spectra module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.plots_additional.html">analysis.plots_additional module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui.tools.html">gui.tools module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui.app.html">gui.app module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_config.html">run_config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_manual.html">run_manual module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">COSMOSampler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">Модули проекта</a></li>
+      <li class="breadcrumb-item active">core.likelihoods module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.likelihoods.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.likelihoods">
+<span id="core-likelihoods-module"></span><h1>core.likelihoods module<a class="headerlink" href="#module-core.likelihoods" title="Link to this heading"></a></h1>
+<p>Реализации функций правдоподобия для совместного анализа сверхновых и GRB.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.likelihoods.AmatiSNLikelihood">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.likelihoods.</span></span><span class="sig-name descname"><span class="pre">AmatiSNLikelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cosmo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arrays</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_cloud</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/likelihoods.html#AmatiSNLikelihood"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.likelihoods.AmatiSNLikelihood" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#core.likelihoods.BaseLikelihood" title="core.likelihoods.BaseLikelihood"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseLikelihood</span></code></a></p>
+<p>Совместное правдоподобие сверхновых (SN) и гамма-всплесков (GRB)
+с использованием корреляции Амати.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cosmo</strong> (<a class="reference internal" href="core.cosmology.html#core.cosmology.Cosmology" title="core.cosmology.Cosmology"><em>Cosmology</em></a>) – Космологическая модель.</p></li>
+<li><p><strong>arrays</strong> (<em>dict</em>) – Словарь с подготовленными плоскими массивами (z_sn, mu_sn, …).</p></li>
+<li><p><strong>is_cloud</strong> (<em>bool</em>) – Используется ли облачный режим для GRB.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.likelihoods.AmatiSNLikelihood.log_probability">
+<span class="sig-name descname"><span class="pre">log_probability</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">varying</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fixed_vals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">defaults</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/likelihoods.html#AmatiSNLikelihood.log_probability"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.likelihoods.AmatiSNLikelihood.log_probability" title="Link to this definition"></a></dt>
+<dd><p>Вычислить логарифм совместного правдоподобия SN + GRB.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>theta</strong> (<em>ndarray</em>) – Текущие значения варьируемых параметров.</p></li>
+<li><p><strong>varying</strong> (<em>list</em><em> of </em><em>str</em>) – Имена варьируемых параметров.</p></li>
+<li><p><strong>fixed_vals</strong> (<em>dict</em>) – Словарь фиксированных параметров.</p></li>
+<li><p><strong>all_names</strong> (<em>list</em><em> of </em><em>str</em>) – Полный список имён параметров (для совместимости).</p></li>
+<li><p><strong>defaults</strong> (<em>list</em>) – Значения по умолчанию (не используются).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>loglike</strong> – Логарифмическая вероятность.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="core.likelihoods.BaseLikelihood">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.likelihoods.</span></span><span class="sig-name descname"><span class="pre">BaseLikelihood</span></span><a class="reference internal" href="_modules/core/likelihoods.html#BaseLikelihood"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.likelihoods.BaseLikelihood" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Абстрактный базовый класс для вычислителя правдоподобия.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.likelihoods.BaseLikelihood.log_probability">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">log_probability</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">varying</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fixed_vals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">all_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">defaults</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/likelihoods.html#BaseLikelihood.log_probability"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.likelihoods.BaseLikelihood.log_probability" title="Link to this definition"></a></dt>
+<dd><p>Возвращает логарифмическую вероятность (или -inf).</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.generators.html" class="btn btn-neutral float-left" title="core.generators module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.spectral_model.html" class="btn btn-neutral float-right" title="core.spectral_model module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Daniel-Erkki Sonin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

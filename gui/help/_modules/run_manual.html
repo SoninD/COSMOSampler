@@ -1,0 +1,225 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>run_manual &mdash; COSMOSampler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            COSMOSampler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Содержание</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">Модули проекта</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">COSMOSampler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">run_manual</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for run_manual</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Ручной запуск MCMC-анализа с параметрами, аналогичными config.json.</span>
+
+<span class="sd">Этот скрипт эмулирует команду ``run`` из `.run_config.py`, но все</span>
+<span class="sd">настройки заданы непосредственно в коде. Позволяет быстро провести</span>
+<span class="sd">анализ без правки JSON-файла.</span>
+
+<span class="sd">Пример использования</span>
+<span class="sd">--------------------</span>
+<span class="sd">   python .run_manual.py</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.fitter_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">FitterModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.catalogue</span><span class="w"> </span><span class="kn">import</span> <span class="n">Catalogue</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.spectral_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">CPLModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">analysis.plots_result</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResultPlotter</span>
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+
+<span class="c1"># Настройка логгера для вывода в консоль</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+    <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> </span><span class="si">%(levelname)s</span><span class="s1">: </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">,</span>
+    <span class="n">handlers</span><span class="o">=</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">()]</span>
+<span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;manual_run&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../run_manual.html#run_manual.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Выполнить полный цикл MCMC-анализа с фиксированными параметрами.</span>
+
+<span class="sd">    Параметры соответствуют типовому конфигурационному файлу</span>
+<span class="sd">    ``configs/config.json``:</span>
+
+<span class="sd">    - Режим GRB: &#39;sigma_int&#39;</span>
+<span class="sd">    - Фильтры каталогов: T90 [2, 1000] с, z GRB [1, 10],</span>
+<span class="sd">      Epeak [0, 1000] кэВ, отн. ошибка Epeak ≤ 100,</span>
+<span class="sd">      z SN [0, 2.3]</span>
+<span class="sd">    - MCMC: 30 walkers, 500 шагов, burn‑in 200</span>
+<span class="sd">    - Фиксация: Ok0 = 0 (остальные космологические параметры свободны)</span>
+<span class="sd">    - Параметры Амати: a, b, k, sigma_int — свободны</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># 1. Загрузка данных из каталогов SWIFT/Pantheon</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=== Загрузка данных ===&quot;</span><span class="p">)</span>
+    <span class="n">cat</span> <span class="o">=</span> <span class="n">Catalogue</span><span class="p">(</span>
+        <span class="n">grb_t90min</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">grb_t90max</span><span class="o">=</span><span class="mf">1000.0</span><span class="p">,</span>
+        <span class="n">grb_z_min</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">grb_z_max</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
+        <span class="n">grb_ep_min</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">grb_ep_max</span><span class="o">=</span><span class="mf">1000.0</span><span class="p">,</span>
+        <span class="n">grb_ep_err_max</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span>
+        <span class="n">sn_z_min</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">sn_z_max</span><span class="o">=</span><span class="mf">2.3</span>
+    <span class="p">)</span>
+
+    <span class="n">sn_df</span> <span class="o">=</span> <span class="n">cat</span><span class="o">.</span><span class="n">sn_data</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Сверхновых загружено: </span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sn_df</span><span class="p">))</span>
+
+    <span class="c1"># Обработка GRB через спектральную модель CPL</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">cat</span><span class="o">.</span><span class="n">grb_data</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">processor</span> <span class="o">=</span> <span class="n">CPLModel</span><span class="p">(</span><span class="n">cat</span><span class="o">.</span><span class="n">grb_data</span><span class="p">)</span>
+        <span class="n">grb_df</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="n">get_s_e_data</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;GRB после обработки: </span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">grb_df</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">grb_df</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;GRB не найдены после фильтрации&quot;</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># 2. Создание модели и фиксация параметров</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">FitterModel</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">sn_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">sn_df</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">add_sn</span><span class="p">(</span><span class="n">sn_df</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">grb_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">grb_df</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">add_grb</span><span class="p">(</span><span class="n">grb_df</span><span class="p">)</span>
+
+    <span class="c1"># Фиксируем кривизну (остальные параметры будут оцениваться)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">fix</span><span class="p">(</span><span class="n">Ok0</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># 3. Запуск MCMC</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=== Запуск MCMC (sigma_int) ===&quot;</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">run_mcmc</span><span class="p">(</span>
+        <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;sigma_int&#39;</span><span class="p">,</span>
+        <span class="n">n_walkers</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="n">n_steps</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+        <span class="n">n_discard</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+        <span class="n">n_cloud_points</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>     <span class="c1"># не используется в sigma_int</span>
+        <span class="n">cloud_seed</span><span class="o">=</span><span class="mi">42</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">samples</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Цепочка пуста. Увеличьте n_steps или уменьшите n_discard.&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># 4. Результаты</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Медианные параметры:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">median_params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">val</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=== Сохранение результатов и графики ===&quot;</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">save_analysis_package</span><span class="p">()</span>
+    <span class="n">plotter</span> <span class="o">=</span> <span class="n">ResultPlotter</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+    <span class="n">plotter</span><span class="o">.</span><span class="n">plot_all</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Готово.&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Daniel-Erkki Sonin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+.. COSMOSampler documentation
+
+========================================
+Документация COSMOSampler
+========================================
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Содержание
+
+   modules

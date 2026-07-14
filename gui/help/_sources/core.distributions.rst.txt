@@ -1,0 +1,7 @@
+core.distributions module
+==========================
+
+.. automodule:: core.distributions
+   :members:
+   :undoc-members:
+   :show-inheritance:

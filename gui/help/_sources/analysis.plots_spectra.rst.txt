@@ -1,0 +1,7 @@
+analysis.plots\_spectra module
+===============================
+
+.. automodule:: analysis.plots_spectra
+   :members:
+   :undoc-members:
+   :show-inheritance:

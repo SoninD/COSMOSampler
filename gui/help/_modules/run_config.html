@@ -1,0 +1,392 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>run_config &mdash; COSMOSampler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            COSMOSampler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Содержание</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">Модули проекта</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">COSMOSampler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">run_config</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for run_config</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Запуск MCMC-анализа по конфигурационному JSON-файлу.</span>
+
+<span class="sd">Позволяет выполнять команды ``run`` (новый запуск), ``resume``</span>
+<span class="sd">(продолжение прерванной цепочки) и ``analyze`` (построение графиков</span>
+<span class="sd">по сохранённым результатам) без GUI.</span>
+
+<span class="sd">Примеры</span>
+<span class="sd">-------</span>
+<span class="sd">.. code-block:: bash</span>
+
+<span class="sd">   python .run_config.py                  # configs/config.json</span>
+<span class="sd">   python .run_config.py my_config.json   # другой конфиг</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.catalogue</span><span class="w"> </span><span class="kn">import</span> <span class="n">Catalogue</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.spectral_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseSpectralModel</span><span class="p">,</span> <span class="n">CPLModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.fitter_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">FitterModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">analysis.plots_result</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResultPlotter</span>
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+
+
+<span class="c1"># ================================================================</span>
+<span class="c1"># Вспомогательные функции</span>
+<span class="c1"># ================================================================</span>
+<div class="viewcode-block" id="parse_fixation">
+<a class="viewcode-back" href="../run_config.html#run_config.parse_fixation">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_fixation</span><span class="p">(</span><span class="n">fix_list</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Преобразовать список строк вида ``&quot;ключ=значение&quot;`` в словарь.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fix_list : list of str or None</span>
+<span class="sd">        Список строк, например ``[&#39;Ok0=0&#39;]``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    fixed : dict</span>
+<span class="sd">        Словарь фиксированных параметров {имя: значение}.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fixed</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">fix_list</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">fix_list</span><span class="p">:</span>
+            <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">)</span>
+            <span class="n">fixed</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fixed</span></div>
+
+
+
+<div class="viewcode-block" id="load_json_safe">
+<a class="viewcode-back" href="../run_config.html#run_config.load_json_safe">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_json_safe</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Загрузить JSON-файл с автоопределением кодировки.</span>
+
+<span class="sd">    Сначала пробует UTF-8 (с BOM), затем cp1251.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filepath : str or Path</span>
+<span class="sd">        Путь к JSON-файлу.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    data : dict</span>
+<span class="sd">        Содержимое JSON.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8-sig&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">UnicodeDecodeError</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;cp1251&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ================================================================</span>
+<span class="c1"># Команды</span>
+<span class="c1"># ================================================================</span>
+<div class="viewcode-block" id="run_mode">
+<a class="viewcode-back" href="../run_config.html#run_config.run_mode">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_mode</span><span class="p">(</span><span class="n">cfg</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Выполнить новый запуск MCMC.</span>
+
+<span class="sd">    Параметры</span>
+<span class="sd">    ---------</span>
+<span class="sd">    cfg : dict</span>
+<span class="sd">        Словарь конфигурации, загруженный из JSON.</span>
+<span class="sd">        Ожидаемые ключи:</span>
+<span class="sd">        - mode (str) : &#39;sigma_int&#39; или &#39;clouds&#39;</span>
+<span class="sd">        - n_walkers, n_steps, n_discard, n_cloud_points, cloud_seed</span>
+<span class="sd">        - fix (list of str) : список фиксаций вида &quot;par=val&quot;</span>
+<span class="sd">        - t90min, t90max, grb_z_min, grb_z_max, ep_min, ep_max,</span>
+<span class="sd">          ep_err_max, sn_z_min, sn_z_max (фильтры каталогов)</span>
+<span class="sd">        - sn_csv, grb_csv (пути к CSV, если не используются каталоги)</span>
+<span class="sd">        - swift1, swift2, pantheon (альтернативные пути к каталогам)</span>
+
+<span class="sd">    Результат</span>
+<span class="sd">    ---------</span>
+<span class="sd">    None</span>
+<span class="sd">        Цепочка MCMC сохраняется в папку результатов, строятся графики.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=== Загрузка данных ===&quot;</span><span class="p">)</span>
+    <span class="n">sn_csv</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sn_csv&#39;</span><span class="p">)</span>
+    <span class="n">grb_csv</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;grb_csv&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sn_csv</span> <span class="ow">or</span> <span class="n">grb_csv</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Используются готовые CSV-файлы.&quot;</span><span class="p">)</span>
+        <span class="n">sn_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">sn_csv</span><span class="p">)</span> <span class="k">if</span> <span class="n">sn_csv</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">grb_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">grb_csv</span><span class="p">)</span> <span class="k">if</span> <span class="n">grb_csv</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">sn_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Сверхновых (CSV): </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">sn_df</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">grb_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  GRB (CSV): </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">grb_df</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">cat</span> <span class="o">=</span> <span class="n">Catalogue</span><span class="p">(</span>
+            <span class="n">grb_t90min</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;t90min&#39;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">),</span>
+            <span class="n">grb_t90max</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;t90max&#39;</span><span class="p">,</span> <span class="mf">1e3</span><span class="p">),</span>
+            <span class="n">grb_z_min</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;grb_z_min&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+            <span class="n">grb_z_max</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;grb_z_max&#39;</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">),</span>
+            <span class="n">grb_ep_min</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ep_min&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+            <span class="n">grb_ep_max</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ep_max&#39;</span><span class="p">,</span> <span class="mf">1e3</span><span class="p">),</span>
+            <span class="n">grb_ep_err_max</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ep_err_max&#39;</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">),</span>
+            <span class="n">sn_z_min</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sn_z_min&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+            <span class="n">sn_z_max</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sn_z_max&#39;</span><span class="p">,</span> <span class="mf">2.3</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;swift1&#39;</span><span class="p">):</span>
+            <span class="n">cat</span><span class="o">.</span><span class="n">swift1_path</span> <span class="o">=</span> <span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;swift1&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;swift2&#39;</span><span class="p">):</span>
+            <span class="n">cat</span><span class="o">.</span><span class="n">swift2_path</span> <span class="o">=</span> <span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;swift2&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pantheon&#39;</span><span class="p">):</span>
+            <span class="n">cat</span><span class="o">.</span><span class="n">pantheon_path</span> <span class="o">=</span> <span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;pantheon&#39;</span><span class="p">]</span>
+
+        <span class="n">sn_df</span> <span class="o">=</span> <span class="n">cat</span><span class="o">.</span><span class="n">sn_data</span>
+        <span class="n">grb_df</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Сверхновых: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">sn_df</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cat</span><span class="o">.</span><span class="n">grb_data</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">processor</span> <span class="o">=</span> <span class="n">CPLModel</span><span class="p">(</span><span class="n">cat</span><span class="o">.</span><span class="n">grb_data</span><span class="p">)</span>
+            <span class="n">grb_df</span> <span class="o">=</span> <span class="n">processor</span><span class="o">.</span><span class="n">get_s_e_data</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Гамма-всплесков: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">grb_df</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">FitterModel</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">sn_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">sn_df</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">add_sn</span><span class="p">(</span><span class="n">sn_df</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">grb_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">grb_df</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">add_grb</span><span class="p">(</span><span class="n">grb_df</span><span class="p">)</span>
+
+    <span class="n">fix_dict</span> <span class="o">=</span> <span class="n">parse_fixation</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;fix&#39;</span><span class="p">,</span> <span class="p">[]))</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">fix</span><span class="p">(</span><span class="o">**</span><span class="n">fix_dict</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">fix_dict</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Зафиксированы: </span><span class="si">{</span><span class="n">fix_dict</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== Запуск MCMC ===&quot;</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">run_mcmc</span><span class="p">(</span>
+        <span class="n">mode</span><span class="o">=</span><span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;mode&#39;</span><span class="p">],</span>
+        <span class="n">n_walkers</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;n_walkers&#39;</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span>
+        <span class="n">n_steps</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;n_steps&#39;</span><span class="p">,</span> <span class="mi">2000</span><span class="p">),</span>
+        <span class="n">n_discard</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;n_discard&#39;</span><span class="p">,</span> <span class="mi">500</span><span class="p">),</span>
+        <span class="n">n_cloud_points</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;n_cloud_points&#39;</span><span class="p">,</span> <span class="mi">500</span><span class="p">),</span>
+        <span class="n">cloud_seed</span><span class="o">=</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;cloud_seed&#39;</span><span class="p">,</span> <span class="mi">42</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">samples</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;MCMC не вернул выборку. Визуализация пропущена.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== Сохранение результатов и графики ===&quot;</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">save_analysis_package</span><span class="p">()</span>
+    <span class="n">plotter</span> <span class="o">=</span> <span class="n">ResultPlotter</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+    <span class="n">plotter</span><span class="o">.</span><span class="n">plot_all</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Готово.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="resume_mode">
+<a class="viewcode-back" href="../run_config.html#run_config.resume_mode">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resume_mode</span><span class="p">(</span><span class="n">cfg</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Продолжить прерванную цепочку MCMC.</span>
+
+<span class="sd">    Параметры</span>
+<span class="sd">    ---------</span>
+<span class="sd">    cfg : dict</span>
+<span class="sd">        Содержит ключ ``resume``, внутри которого:</span>
+<span class="sd">        - path (str) : путь к папке с цепочкой (chain.h5)</span>
+<span class="sd">        - extra_steps (int) : добавочные шаги сверх запланированных.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;resume&#39;</span><span class="p">][</span><span class="s1">&#39;path&#39;</span><span class="p">]))</span>
+    <span class="n">extra</span> <span class="o">=</span> <span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;resume&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;extra_steps&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Возобновление из </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> с extra_steps=</span><span class="si">{</span><span class="n">extra</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">FitterModel</span><span class="p">(</span><span class="n">create_folder</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">load_state_from_backend</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">resume_mcmc</span><span class="p">(</span><span class="n">extra_steps</span><span class="o">=</span><span class="n">extra</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">samples</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;MCMC не вернул выборку. Визуализация пропущена.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">model</span><span class="o">.</span><span class="n">save_analysis_package</span><span class="p">()</span>
+    <span class="n">plotter</span> <span class="o">=</span> <span class="n">ResultPlotter</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+    <span class="n">plotter</span><span class="o">.</span><span class="n">plot_all</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Готово.&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="analyze_mode">
+<a class="viewcode-back" href="../run_config.html#run_config.analyze_mode">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">analyze_mode</span><span class="p">(</span><span class="n">cfg</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Загрузить сохранённый пакет анализа и построить графики.</span>
+
+<span class="sd">    Параметры</span>
+<span class="sd">    ---------</span>
+<span class="sd">    cfg : dict</span>
+<span class="sd">        Содержит ключ ``analyze`` с полем ``path`` — путь к папке</span>
+<span class="sd">        с файлами analysis (chain.npz, samples.npz, metadata.json).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;analyze&#39;</span><span class="p">][</span><span class="s1">&#39;path&#39;</span><span class="p">]))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Анализ данных из </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">FitterModel</span><span class="p">(</span><span class="n">create_folder</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;metadata.json&#39;</span><span class="p">)):</span>
+        <span class="n">alt</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;analysis&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">alt</span><span class="p">,</span> <span class="s1">&#39;metadata.json&#39;</span><span class="p">)):</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">alt</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Не найден пакет анализа в </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">load_analysis_package</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">samples</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;MCMC не вернул выборку. Визуализация пропущена.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">plotter</span> <span class="o">=</span> <span class="n">ResultPlotter</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+    <span class="n">plotter</span><span class="o">.</span><span class="n">plot_all</span><span class="p">()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Готово.&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ================================================================</span>
+<span class="c1"># Точка входа</span>
+<span class="c1"># ================================================================</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="s1">&#39;frozen&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+            <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+            <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> </span><span class="si">%(levelname)s</span><span class="s1">: </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">,</span>
+            <span class="n">handlers</span><span class="o">=</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="s1">&#39;mcmc_run.log&#39;</span><span class="p">)]</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+            <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+            <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> </span><span class="si">%(levelname)s</span><span class="s1">: </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">,</span>
+            <span class="n">handlers</span><span class="o">=</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">()]</span>
+        <span class="p">)</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Запуск анализа по конфигурационному файлу&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s1">&#39;config&#39;</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="s1">&#39;?&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;configs/config.json&#39;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Путь к JSON-файлу с параметрами (по умолчанию config.json)&#39;</span>
+    <span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">config</span> <span class="o">=</span> <span class="n">load_json_safe</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="n">command</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;command&#39;</span><span class="p">,</span> <span class="s1">&#39;run&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">command</span> <span class="o">==</span> <span class="s1">&#39;run&#39;</span><span class="p">:</span>
+        <span class="n">run_mode</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">command</span> <span class="o">==</span> <span class="s1">&#39;resume&#39;</span><span class="p">:</span>
+        <span class="n">resume_mode</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">command</span> <span class="o">==</span> <span class="s1">&#39;analyze&#39;</span><span class="p">:</span>
+        <span class="n">analyze_mode</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Неизвестная команда: </span><span class="si">{</span><span class="n">command</span><span class="si">}</span><span class="s2">. &quot;</span>
+            <span class="s2">&quot;Допустимые: run, resume, analyze.&quot;</span>
+        <span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Daniel-Erkki Sonin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

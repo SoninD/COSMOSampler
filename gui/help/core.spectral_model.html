@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.spectral_model module &mdash; COSMOSampler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.fitter_model module" href="core.fitter_model.html" />
+    <link rel="prev" title="core.likelihoods module" href="core.likelihoods.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            COSMOSampler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Содержание</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Модули проекта</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="core._numba_core.html">core._numba_core module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.constants.html">core.constants module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.paths.html">core.paths module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.cosmology.html">core.cosmology module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.distributions.html">core.distributions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.generators.html">core.generators module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.likelihoods.html">core.likelihoods module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">core.spectral_model module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#core.spectral_model.BaseSpectralModel"><code class="docutils literal notranslate"><span class="pre">BaseSpectralModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#core.spectral_model.BaseSpectralModel.energy_int"><code class="docutils literal notranslate"><span class="pre">BaseSpectralModel.energy_int()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#core.spectral_model.BaseSpectralModel.energy_peak_rest_frame"><code class="docutils literal notranslate"><span class="pre">BaseSpectralModel.energy_peak_rest_frame()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#core.spectral_model.BaseSpectralModel.get_params"><code class="docutils literal notranslate"><span class="pre">BaseSpectralModel.get_params()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#core.spectral_model.BaseSpectralModel.get_s_e_data"><code class="docutils literal notranslate"><span class="pre">BaseSpectralModel.get_s_e_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#core.spectral_model.BaseSpectralModel.s_bolo"><code class="docutils literal notranslate"><span class="pre">BaseSpectralModel.s_bolo()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#core.spectral_model.BaseSpectralModel.spectrum"><code class="docutils literal notranslate"><span class="pre">BaseSpectralModel.spectrum()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#core.spectral_model.CPLModel"><code class="docutils literal notranslate"><span class="pre">CPLModel</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#core.spectral_model.CPLModel.get_params"><code class="docutils literal notranslate"><span class="pre">CPLModel.get_params()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#core.spectral_model.CPLModel.spectrum"><code class="docutils literal notranslate"><span class="pre">CPLModel.spectrum()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.fitter_model.html">core.fitter_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.plots_result.html">analysis.plots_result module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.plots_spectra.html">analysis.plots_spectra module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.plots_additional.html">analysis.plots_additional module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui.tools.html">gui.tools module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui.app.html">gui.app module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_config.html">run_config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_manual.html">run_manual module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">COSMOSampler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">Модули проекта</a></li>
+      <li class="breadcrumb-item active">core.spectral_model module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.spectral_model.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.spectral_model">
+<span id="core-spectral-model-module"></span><h1>core.spectral_model module<a class="headerlink" href="#module-core.spectral_model" title="Link to this heading"></a></h1>
+<p>Абстрактная спектральная модель и её реализации для вычисления
+S_bolo и E_pi в системе покоя гамма-всплеска.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.spectral_model.BaseSpectralModel">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.spectral_model.</span></span><span class="sig-name descname"><span class="pre">BaseSpectralModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catalogue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">pandas.DataFrame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/spectral_model.html#BaseSpectralModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.spectral_model.BaseSpectralModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Абстрактная спектральная модель.</p>
+<p>Предоставляет общий интерфейс для вычисления болометрической плотности
+потока S_bolo и пиковой энергии E_pi в системе покоя для заданного
+гамма-всплеска.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>catalogue</strong> (<em>pandas.DataFrame</em>) – Каталог GRB, содержащий спектральные параметры и наблюдаемые потоки.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.spectral_model.BaseSpectralModel.energy_int">
+<span class="sig-name descname"><span class="pre">energy_int</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">int_lims</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/spectral_model.html#BaseSpectralModel.energy_int"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.spectral_model.BaseSpectralModel.energy_int" title="Link to this definition"></a></dt>
+<dd><p>Вычислить определённый интеграл от spectrum в заданных пределах.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>int_lims</strong> (<em>tuple</em><em> (</em><em>float</em><em>, </em><em>float</em><em>)</em>) – Нижний и верхний пределы интегрирования.</p></li>
+<li><p><strong>params</strong> (<em>list</em>) – Параметры модели.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>integral</strong> – Значение интеграла.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.spectral_model.BaseSpectralModel.energy_peak_rest_frame">
+<span class="sig-name descname"><span class="pre">energy_peak_rest_frame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_peak</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_peak_err_l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy_peak_err_u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/spectral_model.html#BaseSpectralModel.energy_peak_rest_frame"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.spectral_model.BaseSpectralModel.energy_peak_rest_frame" title="Link to this definition"></a></dt>
+<dd><p>Пересчитать пиковую энергию в систему покоя.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> (<em>float</em>) – Красное смещение.</p></li>
+<li><p><strong>energy_peak</strong> (<em>float</em>) – Пиковая энергия в системе наблюдателя.</p></li>
+<li><p><strong>energy_peak_err_l</strong> (<em>float</em>) – Нижняя ошибка пиковой энергии.</p></li>
+<li><p><strong>energy_peak_err_u</strong> (<em>float</em>) – Верхняя ошибка пиковой энергии.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>e_pi</strong> (<em>float</em>) – Пиковая энергия в системе покоя.</p></li>
+<li><p><strong>e_pi_err_l</strong> (<em>float</em>) – Нижняя ошибка пиковой энергии в системе покоя.</p></li>
+<li><p><strong>e_pi_err_u</strong> (<em>float</em>) – Верхняя ошибка пиковой энергии в системе покоя.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.spectral_model.BaseSpectralModel.get_params">
+<span class="sig-name descname"><span class="pre">get_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/spectral_model.html#BaseSpectralModel.get_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.spectral_model.BaseSpectralModel.get_params" title="Link to this definition"></a></dt>
+<dd><p>Извлечь параметры модели из строки каталога.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>row</strong> (<em>pandas.Series</em>) – Строка каталога с необходимыми колонками.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>params</strong> – Список параметров модели.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.spectral_model.BaseSpectralModel.get_s_e_data">
+<span class="sig-name descname"><span class="pre">get_s_e_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grb_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/spectral_model.html#BaseSpectralModel.get_s_e_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.spectral_model.BaseSpectralModel.get_s_e_data" title="Link to this definition"></a></dt>
+<dd><p>Построить таблицу с S_bolo и E_pi для выбранных GRB.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>grb_name</strong> (<em>str</em><em> or </em><em>list</em><em> of </em><em>str</em><em>, </em><em>optional</em>) – Имя или список имён GRB. Если None, обрабатываются все.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>result</strong> – Таблица с колонками:
+GRBname, z, sbolo, sbolo_err, e_pi, e_pi_err_l, e_pi_err_u, T90.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.spectral_model.BaseSpectralModel.s_bolo">
+<span class="sig-name descname"><span class="pre">s_bolo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_obs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_obs_err</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/spectral_model.html#BaseSpectralModel.s_bolo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.spectral_model.BaseSpectralModel.s_bolo" title="Link to this definition"></a></dt>
+<dd><p>Вычислить болометрическую плотность потока S_bolo.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> (<em>float</em>) – Красное смещение.</p></li>
+<li><p><strong>params</strong> (<em>list</em>) – Параметры модели.</p></li>
+<li><p><strong>s_obs</strong> (<em>float</em>) – Наблюдаемая плотность потока.</p></li>
+<li><p><strong>s_obs_err</strong> (<em>float</em>) – Ошибка наблюдаемой плотности потока.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>S_bolo</strong> (<em>float</em>) – Болометрическая плотность потока.</p></li>
+<li><p><strong>S_bolo_err</strong> (<em>float</em>) – Ошибка болометрической плотности потока.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.spectral_model.BaseSpectralModel.spectrum">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">spectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/spectral_model.html#BaseSpectralModel.spectrum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.spectral_model.BaseSpectralModel.spectrum" title="Link to this definition"></a></dt>
+<dd><p>Вычислить поток N(E) (в произвольных единицах) для массива энергий.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>energy</strong> (<em>ndarray</em>) – Массив значений энергии.</p></li>
+<li><p><strong>params</strong> (<em>list</em>) – Список параметров модели, извлечённый из строки каталога.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>flux</strong> – Поток N(E) для каждого значения энергии.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="core.spectral_model.CPLModel">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.spectral_model.</span></span><span class="sig-name descname"><span class="pre">CPLModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catalogue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">pandas.DataFrame</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/spectral_model.html#CPLModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.spectral_model.CPLModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#core.spectral_model.BaseSpectralModel" title="core.spectral_model.BaseSpectralModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseSpectralModel</span></code></a></p>
+<p>Модель Cutoff Power Law (CPL) для спектра гамма-всплеска.</p>
+<p>N(E) = A_norm * (E / E_norm)^alpha * exp(-E * (2 + alpha) / E_peak).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>catalogue</strong> (<em>pandas.DataFrame</em>) – Каталог GRB, содержащий колонки:
+alpha, Epeak, enorm, norm, S_obs, S_obs_err, redshift, DEpeak_hi, DEpeak_low.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.spectral_model.CPLModel.get_params">
+<span class="sig-name descname"><span class="pre">get_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/spectral_model.html#CPLModel.get_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.spectral_model.CPLModel.get_params" title="Link to this definition"></a></dt>
+<dd><p>Извлечь параметры CPL из строки каталога.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>row</strong> (<em>pandas.Series</em>) – Строка с колонками ‘alpha’, ‘Epeak’, ‘enorm’, ‘norm’.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>params</strong> – [alpha, E_peak, E_norm, A_norm].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.spectral_model.CPLModel.spectrum">
+<span class="sig-name descname"><span class="pre">spectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/core/spectral_model.html#CPLModel.spectrum"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.spectral_model.CPLModel.spectrum" title="Link to this definition"></a></dt>
+<dd><p>Вычислить поток CPL для массива энергий.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>energy</strong> (<em>ndarray</em>) – Массив энергий.</p></li>
+<li><p><strong>params</strong> (<em>list</em><em> [</em><em>alpha</em><em>, </em><em>E_peak</em><em>, </em><em>E_norm</em><em>, </em><em>A_norm</em><em>]</em>) – Параметры модели.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>flux</strong> – N(E).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.likelihoods.html" class="btn btn-neutral float-left" title="core.likelihoods module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.fitter_model.html" class="btn btn-neutral float-right" title="core.fitter_model module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Daniel-Erkki Sonin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

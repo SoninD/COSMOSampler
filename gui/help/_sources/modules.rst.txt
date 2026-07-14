@@ -1,0 +1,48 @@
+.. _modules:
+
+Модули проекта
+==============
+
+Ядро (Core)
+-----------
+
+.. toctree::
+   :maxdepth: 1
+
+   core._numba_core
+   core.constants
+   core.paths
+   core.cosmology
+   core.distributions
+   core.generators
+   core.likelihoods
+   core.spectral_model
+   core.fitter_model
+
+Анализ и визуализация
+---------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   analysis.plots_result
+   analysis.plots_spectra
+   analysis.plots_additional
+
+Графический интерфейс
+---------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   gui.tools
+   gui.app
+
+Скрипты запуска
+----------------
+
+.. toctree::
+   :maxdepth: 1
+
+   run_config
+   run_manual

@@ -1,0 +1,229 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.cosmology &mdash; COSMOSampler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            COSMOSampler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Содержание</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Модули проекта</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">COSMOSampler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.cosmology</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.cosmology</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Космологическая модель Фридмана, параметризованная плотностью тёмной энергии.</span>
+
+<span class="sd">Основной класс Cosmology хранит H0, Ode, Ok, w, а плотность материи Om</span>
+<span class="sd">автоматически вычисляется из условия Om + Ok + Ode = 1.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core._numba_core</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">hubble_norm_array</span><span class="p">,</span> <span class="n">integral_array</span><span class="p">,</span>
+                              <span class="n">d_M_array</span><span class="p">,</span> <span class="n">d_L_array</span><span class="p">,</span> <span class="n">d_E_array</span><span class="p">,</span> <span class="n">distance_modulus_array</span><span class="p">)</span>
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+
+<div class="viewcode-block" id="Cosmology">
+<a class="viewcode-back" href="../../core.cosmology.html#core.cosmology.Cosmology">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Cosmology</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Космологическая модель Фридмана.</span>
+
+<span class="sd">    Параметры</span>
+<span class="sd">    ----------</span>
+<span class="sd">    H0 : float</span>
+<span class="sd">        Постоянная Хаббла (км/с/Мпк). По умолчанию 70.</span>
+<span class="sd">    Ode : float</span>
+<span class="sd">        Параметр плотности тёмной энергии. По умолчанию 0.7.</span>
+<span class="sd">    w : float</span>
+<span class="sd">        Уравнение состояния тёмной энергии. По умолчанию -1.</span>
+<span class="sd">    Ok : float</span>
+<span class="sd">        Параметр кривизны. По умолчанию 0.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">H0</span><span class="o">=</span><span class="mf">70.0</span><span class="p">,</span> <span class="n">Ode</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">w</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">Ok</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">H0</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">H0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Ode</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">Ode</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Ok</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">Ok</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Om</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ok</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ode</span>
+
+<div class="viewcode-block" id="Cosmology.update">
+<a class="viewcode-back" href="../../core.cosmology.html#core.cosmology.Cosmology.update">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">H0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">Ode</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">Ok</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">w</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Обновить космологические параметры.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">H0</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">H0</span> <span class="o">=</span> <span class="n">H0</span>
+        <span class="k">if</span> <span class="n">Ok</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Ok</span> <span class="o">=</span> <span class="n">Ok</span>
+        <span class="k">if</span> <span class="n">w</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="n">w</span>
+        <span class="k">if</span> <span class="n">Ode</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Ode</span> <span class="o">=</span> <span class="n">Ode</span>
+        <span class="c1"># В любом случае пересчитываем Om</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Om</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ok</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ode</span></div>
+
+
+    <span class="c1"># ---- Базовые функции ----</span>
+<div class="viewcode-block" id="Cosmology.E">
+<a class="viewcode-back" href="../../core.cosmology.html#core.cosmology.Cosmology.E">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">E</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">n_points</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Нормированный параметр Хаббла h(z) = H(z)/H0.&quot;&quot;&quot;</span>
+        <span class="n">scalar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">z_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">z</span><span class="p">])</span> <span class="k">if</span> <span class="n">scalar</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">hubble_norm_array</span><span class="p">(</span><span class="n">z_arr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ok</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">)</span>   <span class="c1"># исправлено</span>
+        <span class="k">return</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">scalar</span> <span class="k">else</span> <span class="n">res</span></div>
+
+
+<div class="viewcode-block" id="Cosmology.I">
+<a class="viewcode-back" href="../../core.cosmology.html#core.cosmology.Cosmology.I">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">I</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">n_points</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Интеграл I(z) = ∫₀ᶻ dz&#39; / h(z&#39;).&quot;&quot;&quot;</span>
+        <span class="n">scalar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">z_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">z</span><span class="p">])</span> <span class="k">if</span> <span class="n">scalar</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">integral_array</span><span class="p">(</span><span class="n">z_arr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ok</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)</span>  <span class="c1"># исправлено</span>
+        <span class="k">return</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">scalar</span> <span class="k">else</span> <span class="n">res</span></div>
+
+
+    <span class="c1"># ---- Расстояния ----</span>
+<div class="viewcode-block" id="Cosmology.d_M">
+<a class="viewcode-back" href="../../core.cosmology.html#core.cosmology.Cosmology.d_M">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">d_M</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">n_points</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Поперечное сопутствующее расстояние (Мпк).&quot;&quot;&quot;</span>
+        <span class="n">scalar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">z_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">z</span><span class="p">])</span> <span class="k">if</span> <span class="n">scalar</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">d_M_array</span><span class="p">(</span><span class="n">z_arr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">H0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ok</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)</span>  <span class="c1"># исправлено</span>
+        <span class="k">return</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">scalar</span> <span class="k">else</span> <span class="n">res</span></div>
+
+
+<div class="viewcode-block" id="Cosmology.d_L">
+<a class="viewcode-back" href="../../core.cosmology.html#core.cosmology.Cosmology.d_L">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">d_L</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">n_points</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Яркостное расстояние (Мпк).&quot;&quot;&quot;</span>
+        <span class="n">scalar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">z_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">z</span><span class="p">])</span> <span class="k">if</span> <span class="n">scalar</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">d_L_array</span><span class="p">(</span><span class="n">z_arr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">H0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ok</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)</span>  <span class="c1"># исправлено</span>
+        <span class="k">return</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">scalar</span> <span class="k">else</span> <span class="n">res</span></div>
+
+
+<div class="viewcode-block" id="Cosmology.d_E">
+<a class="viewcode-back" href="../../core.cosmology.html#core.cosmology.Cosmology.d_E">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">d_E</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">n_points</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Энергетическое расстояние (Мпк).&quot;&quot;&quot;</span>
+        <span class="n">scalar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">z_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">z</span><span class="p">])</span> <span class="k">if</span> <span class="n">scalar</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">d_E_array</span><span class="p">(</span><span class="n">z_arr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">H0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ok</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)</span>  <span class="c1"># исправлено</span>
+        <span class="k">return</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">scalar</span> <span class="k">else</span> <span class="n">res</span></div>
+
+
+<div class="viewcode-block" id="Cosmology.distance_modulus">
+<a class="viewcode-back" href="../../core.cosmology.html#core.cosmology.Cosmology.distance_modulus">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">distance_modulus</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">n_points</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Модуль расстояния μ(z) = 5 log₁₀(d_L / 10 пк).&quot;&quot;&quot;</span>
+        <span class="n">scalar</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">z_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">z</span><span class="p">])</span> <span class="k">if</span> <span class="n">scalar</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">distance_modulus_array</span><span class="p">(</span><span class="n">z_arr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">H0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ok</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)</span>  <span class="c1"># исправлено</span>
+        <span class="k">return</span> <span class="n">res</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">scalar</span> <span class="k">else</span> <span class="n">res</span></div>
+
+
+<div class="viewcode-block" id="Cosmology.mu">
+<a class="viewcode-back" href="../../core.cosmology.html#core.cosmology.Cosmology.mu">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mu</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">n_points</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Алиас для distance_modulus.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">distance_modulus</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cosmology(H0=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">H0</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, Ode=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">Ode</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Ok=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">Ok</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">, w=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span></div>
+
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Daniel-Erkki Sonin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,397 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core._numba_core module &mdash; COSMOSampler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.constants module" href="core.constants.html" />
+    <link rel="prev" title="Модули проекта" href="modules.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            COSMOSampler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Содержание</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Модули проекта</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">core._numba_core module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#core._numba_core.chi2_grb_mc_mode"><code class="docutils literal notranslate"><span class="pre">chi2_grb_mc_mode()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#core._numba_core.chi2_sn"><code class="docutils literal notranslate"><span class="pre">chi2_sn()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#core._numba_core.d_E_array"><code class="docutils literal notranslate"><span class="pre">d_E_array()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#core._numba_core.d_L_array"><code class="docutils literal notranslate"><span class="pre">d_L_array()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#core._numba_core.d_M_array"><code class="docutils literal notranslate"><span class="pre">d_M_array()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#core._numba_core.distance_modulus_array"><code class="docutils literal notranslate"><span class="pre">distance_modulus_array()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#core._numba_core.hubble_norm_array"><code class="docutils literal notranslate"><span class="pre">hubble_norm_array()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#core._numba_core.integral_array"><code class="docutils literal notranslate"><span class="pre">integral_array()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#core._numba_core.loglike_grb_asym"><code class="docutils literal notranslate"><span class="pre">loglike_grb_asym()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#core._numba_core.mu_amati_mc_mode"><code class="docutils literal notranslate"><span class="pre">mu_amati_mc_mode()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#core._numba_core.mu_amati_with_errors"><code class="docutils literal notranslate"><span class="pre">mu_amati_with_errors()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.constants.html">core.constants module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.paths.html">core.paths module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.cosmology.html">core.cosmology module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.distributions.html">core.distributions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.generators.html">core.generators module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.likelihoods.html">core.likelihoods module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.spectral_model.html">core.spectral_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.fitter_model.html">core.fitter_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.plots_result.html">analysis.plots_result module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.plots_spectra.html">analysis.plots_spectra module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.plots_additional.html">analysis.plots_additional module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui.tools.html">gui.tools module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui.app.html">gui.app module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_config.html">run_config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_manual.html">run_manual module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">COSMOSampler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">Модули проекта</a></li>
+      <li class="breadcrumb-item active">core._numba_core module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core._numba_core.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core._numba_core">
+<span id="core-numba-core-module"></span><h1>core._numba_core module<a class="headerlink" href="#module-core._numba_core" title="Link to this heading"></a></h1>
+<p>Низкоуровневые ускоренные функции (Numba) для космологических вычислений
+и статистик гамма-всплесков / сверхновых.
+Все функции оптимизированы с помощью декоратора &#64;njit.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="core._numba_core.chi2_grb_mc_mode">
+<span class="sig-prename descclassname"><span class="pre">core._numba_core.</span></span><span class="sig-name descname"><span class="pre">chi2_grb_mc_mode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">residuals</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core._numba_core.chi2_grb_mc_mode" title="Link to this definition"></a></dt>
+<dd><p>χ² для GRB в облачном режиме (веса одинаковы).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>residuals</strong> (<em>ndarray</em>) – Разности (данные – модель).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>chi2</strong> – Значение χ².</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core._numba_core.chi2_sn">
+<span class="sig-prename descclassname"><span class="pre">core._numba_core.</span></span><span class="sig-name descname"><span class="pre">chi2_sn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu_obs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dmu</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core._numba_core.chi2_sn" title="Link to this definition"></a></dt>
+<dd><p>χ² для сверхновых с симметричными ошибками.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mu_obs</strong> (<em>ndarray</em>) – Наблюдаемые модули расстояния.</p></li>
+<li><p><strong>mu_model</strong> (<em>ndarray</em>) – Модельные модули расстояния.</p></li>
+<li><p><strong>dmu</strong> (<em>ndarray</em>) – Ошибки измерений.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>chi2</strong> – Значение χ².</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core._numba_core.d_E_array">
+<span class="sig-prename descclassname"><span class="pre">core._numba_core.</span></span><span class="sig-name descname"><span class="pre">d_E_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">H0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ok</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core._numba_core.d_E_array" title="Link to this definition"></a></dt>
+<dd><p>Энергетическое расстояние (Мпк) для массива z.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> (<em>ndarray</em>) – Красные смещения.</p></li>
+<li><p><strong>H0</strong> (<em>float</em>) – Постоянная Хаббла.</p></li>
+<li><p><strong>Ode</strong> (<em>float</em>) – Параметр плотности тёмной энергии.</p></li>
+<li><p><strong>Ok</strong> (<em>float</em>) – Параметр кривизны.</p></li>
+<li><p><strong>w</strong> (<em>float</em>) – Уравнение состояния тёмной энергии.</p></li>
+<li><p><strong>n_points</strong> (<em>int</em><em>, </em><em>optional</em>) – Число точек для интегрирования.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>out</strong> – Энергетическое расстояние в Мпк.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core._numba_core.d_L_array">
+<span class="sig-prename descclassname"><span class="pre">core._numba_core.</span></span><span class="sig-name descname"><span class="pre">d_L_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">H0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ok</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core._numba_core.d_L_array" title="Link to this definition"></a></dt>
+<dd><p>Яркостное расстояние (Мпк) для массива z.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> (<em>ndarray</em>) – Красные смещения.</p></li>
+<li><p><strong>H0</strong> (<em>float</em>) – Постоянная Хаббла.</p></li>
+<li><p><strong>Ode</strong> (<em>float</em>) – Параметр плотности тёмной энергии.</p></li>
+<li><p><strong>Ok</strong> (<em>float</em>) – Параметр кривизны.</p></li>
+<li><p><strong>w</strong> (<em>float</em>) – Уравнение состояния тёмной энергии.</p></li>
+<li><p><strong>n_points</strong> (<em>int</em><em>, </em><em>optional</em>) – Число точек для интегрирования.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>out</strong> – Яркостное расстояние в Мпк.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core._numba_core.d_M_array">
+<span class="sig-prename descclassname"><span class="pre">core._numba_core.</span></span><span class="sig-name descname"><span class="pre">d_M_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">H0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ok</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core._numba_core.d_M_array" title="Link to this definition"></a></dt>
+<dd><p>Поперечное сопутствующее расстояние (Мпк) для массива z.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> (<em>ndarray</em>) – Красные смещения.</p></li>
+<li><p><strong>H0</strong> (<em>float</em>) – Постоянная Хаббла (км/с/Мпк).</p></li>
+<li><p><strong>Ode</strong> (<em>float</em>) – Параметр плотности тёмной энергии.</p></li>
+<li><p><strong>Ok</strong> (<em>float</em>) – Параметр кривизны.</p></li>
+<li><p><strong>w</strong> (<em>float</em>) – Уравнение состояния тёмной энергии.</p></li>
+<li><p><strong>n_points</strong> (<em>int</em><em>, </em><em>optional</em>) – Число точек для интегрирования.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>out</strong> – Поперечное сопутствующее расстояние в Мпк.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core._numba_core.distance_modulus_array">
+<span class="sig-prename descclassname"><span class="pre">core._numba_core.</span></span><span class="sig-name descname"><span class="pre">distance_modulus_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">H0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ok</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core._numba_core.distance_modulus_array" title="Link to this definition"></a></dt>
+<dd><p>Модуль расстояния μ(z) = 5 log₁₀(d_L / 10 пк) для массива z.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> (<em>ndarray</em>) – Красные смещения.</p></li>
+<li><p><strong>H0</strong> (<em>float</em>) – Постоянная Хаббла.</p></li>
+<li><p><strong>Ode</strong> (<em>float</em>) – Параметр плотности тёмной энергии.</p></li>
+<li><p><strong>Ok</strong> (<em>float</em>) – Параметр кривизны.</p></li>
+<li><p><strong>w</strong> (<em>float</em>) – Уравнение состояния тёмной энергии.</p></li>
+<li><p><strong>n_points</strong> (<em>int</em><em>, </em><em>optional</em>) – Число точек для интегрирования.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>mu</strong> – Модуль расстояния.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core._numba_core.hubble_norm_array">
+<span class="sig-prename descclassname"><span class="pre">core._numba_core.</span></span><span class="sig-name descname"><span class="pre">hubble_norm_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ok</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core._numba_core.hubble_norm_array" title="Link to this definition"></a></dt>
+<dd><p>Нормированный параметр Хаббла h(z) = H(z)/H0 для массива красных смещений.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> (<em>ndarray</em>) – Массив красных смещений.</p></li>
+<li><p><strong>Ode</strong> (<em>float</em>) – Параметр плотности тёмной энергии.</p></li>
+<li><p><strong>Ok</strong> (<em>float</em>) – Параметр кривизны.</p></li>
+<li><p><strong>w</strong> (<em>float</em>) – Уравнение состояния тёмной энергии.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>out</strong> – Значения h(z) для каждого элемента z.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core._numba_core.integral_array">
+<span class="sig-prename descclassname"><span class="pre">core._numba_core.</span></span><span class="sig-name descname"><span class="pre">integral_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ok</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core._numba_core.integral_array" title="Link to this definition"></a></dt>
+<dd><p>Безразмерный интеграл расстояния I(z) для массива z.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> (<em>ndarray</em>) – Красные смещения.</p></li>
+<li><p><strong>Ode</strong> (<em>float</em>) – Параметр плотности тёмной энергии.</p></li>
+<li><p><strong>Ok</strong> (<em>float</em>) – Параметр кривизны.</p></li>
+<li><p><strong>w</strong> (<em>float</em>) – Уравнение состояния тёмной энергии.</p></li>
+<li><p><strong>n_points</strong> (<em>int</em><em>, </em><em>optional</em>) – Число точек для численного интегрирования.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>out</strong> – Значения I(z) для каждого z.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core._numba_core.loglike_grb_asym">
+<span class="sig-prename descclassname"><span class="pre">core._numba_core.</span></span><span class="sig-name descname"><span class="pre">loglike_grb_asym</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">residuals</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">err_l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">err_u</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core._numba_core.loglike_grb_asym" title="Link to this definition"></a></dt>
+<dd><p>Логарифм правдоподобия для GRB с асимметричными ошибками.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>residuals</strong> (<em>ndarray</em>) – Разности (данные – модель).</p></li>
+<li><p><strong>err_l</strong> (<em>ndarray</em>) – Нижние ошибки.</p></li>
+<li><p><strong>err_u</strong> (<em>ndarray</em>) – Верхние ошибки.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>logL</strong> – Значение логарифма правдоподобия.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core._numba_core.mu_amati_mc_mode">
+<span class="sig-prename descclassname"><span class="pre">core._numba_core.</span></span><span class="sig-name descname"><span class="pre">mu_amati_mc_mode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sbolo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e_pi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core._numba_core.mu_amati_mc_mode" title="Link to this definition"></a></dt>
+<dd><p>Модуль расстояния по корреляции Амати (облачный режим).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> (<em>ndarray</em>) – Красные смещения.</p></li>
+<li><p><strong>sbolo</strong> (<em>ndarray</em>) – Болометрическая плотность потока [эрг/см²/с].</p></li>
+<li><p><strong>e_pi</strong> (<em>ndarray</em>) – Пиковая энергия в системе покоя [кэВ].</p></li>
+<li><p><strong>a</strong> (<em>float</em>) – Параметры корреляции Амати.</p></li>
+<li><p><strong>b</strong> (<em>float</em>) – Параметры корреляции Амати.</p></li>
+<li><p><strong>k</strong> (<em>float</em>) – Параметры корреляции Амати.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>mu</strong> – Модуль расстояния.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="core._numba_core.mu_amati_with_errors">
+<span class="sig-prename descclassname"><span class="pre">core._numba_core.</span></span><span class="sig-name descname"><span class="pre">mu_amati_with_errors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sbolo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sbolo_err</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e_pi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e_pi_err_l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e_pi_err_u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#core._numba_core.mu_amati_with_errors" title="Link to this definition"></a></dt>
+<dd><p>Модуль расстояния и асимметричные ошибки по корреляции Амати.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z</strong> (<em>ndarray</em>) – Красные смещения.</p></li>
+<li><p><strong>sbolo</strong> (<em>ndarray</em>) – Болометрическая плотность потока [эрг/см²/с].</p></li>
+<li><p><strong>sbolo_err</strong> (<em>ndarray</em>) – Ошибка болометрической плотности потока.</p></li>
+<li><p><strong>e_pi</strong> (<em>ndarray</em>) – Пиковая энергия в системе покоя [кэВ].</p></li>
+<li><p><strong>e_pi_err_l</strong> (<em>ndarray</em>) – Нижняя и верхняя ошибки пиковой энергии.</p></li>
+<li><p><strong>e_pi_err_u</strong> (<em>ndarray</em>) – Нижняя и верхняя ошибки пиковой энергии.</p></li>
+<li><p><strong>a</strong> (<em>float</em>) – Параметры корреляции Амати.</p></li>
+<li><p><strong>b</strong> (<em>float</em>) – Параметры корреляции Амати.</p></li>
+<li><p><strong>k</strong> (<em>float</em>) – Параметры корреляции Амати.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>mu</strong> (<em>ndarray</em>) – Модуль расстояния.</p></li>
+<li><p><strong>err_l</strong> (<em>ndarray</em>) – Нижняя ошибка.</p></li>
+<li><p><strong>err_u</strong> (<em>ndarray</em>) – Верхняя ошибка.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modules.html" class="btn btn-neutral float-left" title="Модули проекта" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.constants.html" class="btn btn-neutral float-right" title="core.constants module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Daniel-Erkki Sonin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,391 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.spectral_model &mdash; COSMOSampler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            COSMOSampler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Содержание</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Модули проекта</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">COSMOSampler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.spectral_model</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.spectral_model</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Абстрактная спектральная модель и её реализации для вычисления</span>
+<span class="sd">S_bolo и E_pi в системе покоя гамма-всплеска.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="BaseSpectralModel">
+<a class="viewcode-back" href="../../core.spectral_model.html#core.spectral_model.BaseSpectralModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BaseSpectralModel</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Абстрактная спектральная модель.</span>
+
+<span class="sd">    Предоставляет общий интерфейс для вычисления болометрической плотности</span>
+<span class="sd">    потока S_bolo и пиковой энергии E_pi в системе покоя для заданного</span>
+<span class="sd">    гамма-всплеска.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    catalogue : pandas.DataFrame</span>
+<span class="sd">        Каталог GRB, содержащий спектральные параметры и наблюдаемые потоки.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">catalogue</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cat</span> <span class="o">=</span> <span class="n">catalogue</span>
+
+<div class="viewcode-block" id="BaseSpectralModel.spectrum">
+<a class="viewcode-back" href="../../core.spectral_model.html#core.spectral_model.BaseSpectralModel.spectrum">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">energy</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Вычислить поток N(E) (в произвольных единицах) для массива энергий.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        energy : ndarray</span>
+<span class="sd">            Массив значений энергии.</span>
+<span class="sd">        params : list</span>
+<span class="sd">            Список параметров модели, извлечённый из строки каталога.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        flux : ndarray</span>
+<span class="sd">            Поток N(E) для каждого значения энергии.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span></div>
+
+
+<div class="viewcode-block" id="BaseSpectralModel.get_params">
+<a class="viewcode-back" href="../../core.spectral_model.html#core.spectral_model.BaseSpectralModel.get_params">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Извлечь параметры модели из строки каталога.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        row : pandas.Series</span>
+<span class="sd">            Строка каталога с необходимыми колонками.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        params : list</span>
+<span class="sd">            Список параметров модели.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[]</span></div>
+
+
+<div class="viewcode-block" id="BaseSpectralModel.energy_int">
+<a class="viewcode-back" href="../../core.spectral_model.html#core.spectral_model.BaseSpectralModel.energy_int">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">energy_int</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">int_lims</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Вычислить определённый интеграл от spectrum в заданных пределах.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        int_lims : tuple (float, float)</span>
+<span class="sd">            Нижний и верхний пределы интегрирования.</span>
+<span class="sd">        params : list</span>
+<span class="sd">            Параметры модели.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        integral : float</span>
+<span class="sd">            Значение интеграла.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">e_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">int_lims</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">int_lims</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">num</span><span class="o">=</span><span class="mi">5000</span><span class="p">)</span>
+        <span class="n">en_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spectrum</span><span class="p">(</span><span class="n">e_range</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">trapezoid</span><span class="p">(</span><span class="n">en_range</span><span class="p">,</span> <span class="n">e_range</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BaseSpectralModel.s_bolo">
+<a class="viewcode-back" href="../../core.spectral_model.html#core.spectral_model.BaseSpectralModel.s_bolo">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">s_bolo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">s_obs</span><span class="p">,</span> <span class="n">s_obs_err</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Вычислить болометрическую плотность потока S_bolo.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        z : float</span>
+<span class="sd">            Красное смещение.</span>
+<span class="sd">        params : list</span>
+<span class="sd">            Параметры модели.</span>
+<span class="sd">        s_obs : float</span>
+<span class="sd">            Наблюдаемая плотность потока.</span>
+<span class="sd">        s_obs_err : float</span>
+<span class="sd">            Ошибка наблюдаемой плотности потока.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        S_bolo : float</span>
+<span class="sd">            Болометрическая плотность потока.</span>
+<span class="sd">        S_bolo_err : float</span>
+<span class="sd">            Ошибка болометрической плотности потока.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">num_int</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_int</span><span class="p">((</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">z</span><span class="p">),</span> <span class="mf">1e4</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">z</span><span class="p">)),</span> <span class="n">params</span><span class="p">)</span>
+        <span class="n">denom_int</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_int</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">150</span><span class="p">),</span> <span class="n">params</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">denom_int</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="n">s_obs</span> <span class="o">*</span> <span class="n">num_int</span> <span class="o">/</span> <span class="n">denom_int</span><span class="p">,</span> <span class="n">s_obs_err</span> <span class="o">*</span> <span class="n">num_int</span> <span class="o">/</span> <span class="n">denom_int</span></div>
+
+
+<div class="viewcode-block" id="BaseSpectralModel.energy_peak_rest_frame">
+<a class="viewcode-back" href="../../core.spectral_model.html#core.spectral_model.BaseSpectralModel.energy_peak_rest_frame">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">energy_peak_rest_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">energy_peak</span><span class="p">,</span> <span class="n">energy_peak_err_l</span><span class="p">,</span> <span class="n">energy_peak_err_u</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Пересчитать пиковую энергию в систему покоя.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        z : float</span>
+<span class="sd">            Красное смещение.</span>
+<span class="sd">        energy_peak : float</span>
+<span class="sd">            Пиковая энергия в системе наблюдателя.</span>
+<span class="sd">        energy_peak_err_l : float</span>
+<span class="sd">            Нижняя ошибка пиковой энергии.</span>
+<span class="sd">        energy_peak_err_u : float</span>
+<span class="sd">            Верхняя ошибка пиковой энергии.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        e_pi : float</span>
+<span class="sd">            Пиковая энергия в системе покоя.</span>
+<span class="sd">        e_pi_err_l : float</span>
+<span class="sd">            Нижняя ошибка пиковой энергии в системе покоя.</span>
+<span class="sd">        e_pi_err_u : float</span>
+<span class="sd">            Верхняя ошибка пиковой энергии в системе покоя.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">energy_peak</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">z</span><span class="p">),</span>
+                <span class="n">energy_peak_err_l</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">z</span><span class="p">),</span>
+                <span class="n">energy_peak_err_u</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">z</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="BaseSpectralModel.get_s_e_data">
+<a class="viewcode-back" href="../../core.spectral_model.html#core.spectral_model.BaseSpectralModel.get_s_e_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_s_e_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grb_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Построить таблицу с S_bolo и E_pi для выбранных GRB.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        grb_name : str or list of str, optional</span>
+<span class="sd">            Имя или список имён GRB. Если None, обрабатываются все.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        result : pandas.DataFrame</span>
+<span class="sd">            Таблица с колонками:</span>
+<span class="sd">            GRBname, z, sbolo, sbolo_err, e_pi, e_pi_err_l, e_pi_err_u, T90.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">grb_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data_to_process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cat</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">grb_name</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">data_to_process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cat</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cat</span><span class="p">[</span><span class="s1">&#39;GRBname&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">grb_name</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">data_to_process</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">grb_name</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">data_to_process</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cat</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cat</span><span class="p">[</span><span class="s1">&#39;GRBname&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">grb_name</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">data_to_process</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+        <span class="n">sbolo_list</span><span class="p">,</span> <span class="n">sbolo_err_list</span><span class="p">,</span> <span class="n">e_pi_list</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="n">e_pi_err_l_list</span><span class="p">,</span> <span class="n">e_pi_err_u_list</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="n">name_list</span><span class="p">,</span> <span class="n">z_list</span><span class="p">,</span> <span class="n">t90_list</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">data_to_process</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">S_obs</span><span class="p">,</span> <span class="n">S_obs_err</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;S_obs&#39;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;S_obs_err&#39;</span><span class="p">]</span>
+                <span class="n">redshift</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;redshift&#39;</span><span class="p">]</span>
+                <span class="n">DEpeak_hi</span><span class="p">,</span> <span class="n">DEpeak_low</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;DEpeak_hi&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;DEpeak_low&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">Epeak</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Epeak&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;GRBname&#39;</span><span class="p">]</span>
+                <span class="n">t90</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;T90&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+
+                <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_params</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+
+                <span class="n">S_bolo</span><span class="p">,</span> <span class="n">S_bolo_err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">s_bolo</span><span class="p">(</span><span class="n">redshift</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">S_obs</span><span class="p">,</span> <span class="n">S_obs_err</span><span class="p">)</span>
+                <span class="n">e_pi</span><span class="p">,</span> <span class="n">e_pi_err_l</span><span class="p">,</span> <span class="n">e_pi_err_u</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">energy_peak_rest_frame</span><span class="p">(</span>
+                    <span class="n">redshift</span><span class="p">,</span> <span class="n">Epeak</span><span class="p">,</span> <span class="n">DEpeak_low</span><span class="p">,</span> <span class="n">DEpeak_hi</span>
+                <span class="p">)</span>
+                <span class="n">sbolo_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">S_bolo</span><span class="p">)</span>
+                <span class="n">sbolo_err_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">S_bolo_err</span><span class="p">)</span>
+                <span class="n">e_pi_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">e_pi</span><span class="p">)</span>
+                <span class="n">e_pi_err_l_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">e_pi_err_l</span><span class="p">)</span>
+                <span class="n">e_pi_err_u_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">e_pi_err_u</span><span class="p">)</span>
+                <span class="n">name_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">z_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">redshift</span><span class="p">)</span>
+                <span class="n">t90_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">t90</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ошибка при обработке GRB </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+        <span class="k">if</span> <span class="n">name_list</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+                <span class="s1">&#39;GRBname&#39;</span><span class="p">:</span> <span class="n">name_list</span><span class="p">,</span> <span class="s1">&#39;z&#39;</span><span class="p">:</span> <span class="n">z_list</span><span class="p">,</span>
+                <span class="s1">&#39;sbolo&#39;</span><span class="p">:</span> <span class="n">sbolo_list</span><span class="p">,</span> <span class="s1">&#39;sbolo_err&#39;</span><span class="p">:</span> <span class="n">sbolo_err_list</span><span class="p">,</span>
+                <span class="s1">&#39;e_pi&#39;</span><span class="p">:</span> <span class="n">e_pi_list</span><span class="p">,</span> <span class="s1">&#39;e_pi_err_l&#39;</span><span class="p">:</span> <span class="n">e_pi_err_l_list</span><span class="p">,</span>
+                <span class="s1">&#39;e_pi_err_u&#39;</span><span class="p">:</span> <span class="n">e_pi_err_u_list</span><span class="p">,</span> <span class="s1">&#39;T90&#39;</span><span class="p">:</span> <span class="n">t90_list</span>
+            <span class="p">})</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="CPLModel">
+<a class="viewcode-back" href="../../core.spectral_model.html#core.spectral_model.CPLModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CPLModel</span><span class="p">(</span><span class="n">BaseSpectralModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Модель Cutoff Power Law (CPL) для спектра гамма-всплеска.</span>
+
+<span class="sd">    N(E) = A_norm * (E / E_norm)^alpha * exp(-E * (2 + alpha) / E_peak).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    catalogue : pandas.DataFrame</span>
+<span class="sd">        Каталог GRB, содержащий колонки:</span>
+<span class="sd">        alpha, Epeak, enorm, norm, S_obs, S_obs_err, redshift, DEpeak_hi, DEpeak_low.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="CPLModel.spectrum">
+<a class="viewcode-back" href="../../core.spectral_model.html#core.spectral_model.CPLModel.spectrum">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">energy</span><span class="p">,</span> <span class="n">params</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Вычислить поток CPL для массива энергий.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        energy : ndarray</span>
+<span class="sd">            Массив энергий.</span>
+<span class="sd">        params : list [alpha, E_peak, E_norm, A_norm]</span>
+<span class="sd">            Параметры модели.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        flux : ndarray</span>
+<span class="sd">            N(E).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">alpha</span><span class="p">,</span> <span class="n">energy_peak</span><span class="p">,</span> <span class="n">energy_norm</span><span class="p">,</span> <span class="n">norm_const</span> <span class="o">=</span> <span class="n">params</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">norm_const</span> <span class="o">*</span> <span class="p">(</span><span class="n">energy</span> <span class="o">/</span> <span class="n">energy_norm</span><span class="p">)</span> <span class="o">**</span> <span class="n">alpha</span> <span class="o">*</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">energy</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span> <span class="o">+</span> <span class="n">alpha</span><span class="p">)</span> <span class="o">/</span> <span class="n">energy_peak</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="CPLModel.get_params">
+<a class="viewcode-back" href="../../core.spectral_model.html#core.spectral_model.CPLModel.get_params">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Извлечь параметры CPL из строки каталога.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        row : pandas.Series</span>
+<span class="sd">            Строка с колонками &#39;alpha&#39;, &#39;Epeak&#39;, &#39;enorm&#39;, &#39;norm&#39;.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        params : list</span>
+<span class="sd">            [alpha, E_peak, E_norm, A_norm].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;alpha&#39;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;Epeak&#39;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;enorm&#39;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;norm&#39;</span><span class="p">]]</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Daniel-Erkki Sonin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

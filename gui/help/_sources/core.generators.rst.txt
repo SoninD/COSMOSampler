@@ -1,0 +1,7 @@
+core.generators module
+=======================
+
+.. automodule:: core.generators
+   :members:
+   :undoc-members:
+   :show-inheritance:

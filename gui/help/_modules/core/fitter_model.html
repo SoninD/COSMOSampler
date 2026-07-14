@@ -1,0 +1,917 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.fitter_model &mdash; COSMOSampler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            COSMOSampler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Содержание</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">Модули проекта</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">COSMOSampler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">core.fitter_model</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for core.fitter_model</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Ядро MCMC-подгонки: байесовский анализ космологических параметров</span>
+<span class="sd">(в параметризации H0, Ode0, w, Ok0) и корреляции Амати.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pickle</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">emcee</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.cosmology</span><span class="w"> </span><span class="kn">import</span> <span class="n">Cosmology</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.generators</span><span class="w"> </span><span class="kn">import</span> <span class="n">GRBCloudGenerator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.likelihoods</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseLikelihood</span><span class="p">,</span> <span class="n">AmatiSNLikelihood</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">core.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProjectPaths</span>
+<span class="c1">#=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="FitterModel">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FitterModel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Байесовская подгонка космологических параметров и параметров Амати.</span>
+
+<span class="sd">    Позволяет добавлять данные сверхновых и гамма-всплесков,</span>
+<span class="sd">    фиксировать/освобождать параметры, запускать MCMC (emcee),</span>
+<span class="sd">    сохранять/загружать состояние и пакеты анализа.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    results_dir : str, optional</span>
+<span class="sd">        Имя папки (или путь) для сохранения результатов. По умолчанию &#39;&#39;.</span>
+<span class="sd">    create_folder : bool, optional</span>
+<span class="sd">        Создавать ли папку для результатов. По умолчанию True.</span>
+<span class="sd">    use_timestamp : bool, optional</span>
+<span class="sd">        Использовать ли подпапку с временной меткой. По умолчанию True.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">results_dir</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">create_folder</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_timestamp</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="c1"># Данные</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sn_df</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grb_df</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clouds</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cosmo</span> <span class="o">=</span> <span class="n">Cosmology</span><span class="p">()</span>
+
+        <span class="c1"># Границы параметров (Ode0 вместо Om0)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_full_bounds</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;H0&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">55</span><span class="p">,</span> <span class="mi">75</span><span class="p">),</span>
+            <span class="s1">&#39;Ode0&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.09</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">),</span>
+            <span class="s1">&#39;w&#39;</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mf">2.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">),</span>
+            <span class="s1">&#39;Ok0&#39;</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+            <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">),</span>
+            <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">35</span><span class="p">,</span> <span class="mi">55</span><span class="p">),</span>
+            <span class="s1">&#39;k&#39;</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">),</span>
+            <span class="s1">&#39;sigma_int&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Папка результатов</span>
+        <span class="n">paths</span> <span class="o">=</span> <span class="n">ProjectPaths</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">create_folder</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">use_timestamp</span><span class="p">:</span>
+                <span class="n">base</span> <span class="o">=</span> <span class="n">paths</span><span class="o">.</span><span class="n">results_dir</span><span class="p">()</span> <span class="o">/</span> <span class="n">results_dir</span> <span class="k">if</span> <span class="n">results_dir</span> <span class="k">else</span> <span class="n">paths</span><span class="o">.</span><span class="n">results_dir</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">results_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_folder</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">base</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">results_dir</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">results_path</span> <span class="o">=</span> <span class="n">results_dir</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results_path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">results_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_folder</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">paths</span><span class="o">.</span><span class="n">results_dir</span><span class="p">()))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">paths</span><span class="o">.</span><span class="n">results_dir</span><span class="p">()</span> <span class="o">/</span> <span class="n">results_dir</span><span class="p">)</span> <span class="k">if</span> <span class="n">results_dir</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">paths</span><span class="o">.</span><span class="n">results_dir</span><span class="p">())</span>
+
+        <span class="c1"># Априорная функция</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Параметры MCMC</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_walkers</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_discard</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chain</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backend</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backend_file</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">median_params</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mcmc_time</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_varying_at_run</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mode_used</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_names</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_default</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arrays</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_steps</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_analysis_mode</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">abort_requested</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Управление флагом прерывания</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+<div class="viewcode-block" id="FitterModel.request_abort">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel.request_abort">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">request_abort</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Запросить мягкое прерывание MCMC (из GUI).&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">abort_requested</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="FitterModel.reset_abort">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel.reset_abort">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset_abort</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Сбросить флаг прерывания перед новым запуском.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">abort_requested</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Добавление данных</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+<div class="viewcode-block" id="FitterModel.add_sn">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel.add_sn">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_sn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">z_upper_limit</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Добавить данные сверхновых.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        df : pandas.DataFrame</span>
+<span class="sd">            Таблица с колонками &#39;zcmb&#39;, &#39;mu&#39;, &#39;dmu&#39;.</span>
+<span class="sd">        z_upper_limit : float, optional</span>
+<span class="sd">            Максимальное красное смещение для фильтрации.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">df</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">z_upper_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;zcmb&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">z_upper_limit</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sn_df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="FitterModel.add_grb">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel.add_grb">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_grb</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Добавить данные гамма-всплесков.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        df : pandas.DataFrame</span>
+<span class="sd">            Таблица с колонками &#39;z&#39;, &#39;sbolo&#39;, &#39;sbolo_err&#39;, &#39;e_pi&#39;,</span>
+<span class="sd">            &#39;e_pi_err_l&#39;, &#39;e_pi_err_u&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">df</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">required</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="s1">&#39;sbolo&#39;</span><span class="p">,</span> <span class="s1">&#39;sbolo_err&#39;</span><span class="p">,</span> <span class="s1">&#39;e_pi&#39;</span><span class="p">,</span> <span class="s1">&#39;e_pi_err_l&#39;</span><span class="p">,</span> <span class="s1">&#39;e_pi_err_u&#39;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">required</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;GRB DataFrame должен содержать колонки: </span><span class="si">{</span><span class="n">required</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;sbolo&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;sbolo_err&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span>
+            <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;e_pi&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;e_pi_err_l&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;e_pi_err_u&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;sbolo&#39;</span><span class="p">])</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;sbolo_err&#39;</span><span class="p">])</span> <span class="o">&amp;</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;e_pi&#39;</span><span class="p">])</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;e_pi_err_l&#39;</span><span class="p">])</span> <span class="o">&amp;</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;e_pi_err_u&#39;</span><span class="p">])</span>
+        <span class="p">)</span>
+        <span class="n">n_bad</span> <span class="o">=</span> <span class="p">(</span><span class="o">~</span><span class="n">valid</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">n_bad</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Удалено </span><span class="si">{</span><span class="n">n_bad</span><span class="si">}</span><span class="s2"> GRB с некорректными (&lt;=0 или inf) значениями S/E.&quot;</span><span class="p">)</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">valid</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;  После фильтрации не осталось ни одного GRB.&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grb_df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Фиксация / освобождение параметров</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+<div class="viewcode-block" id="FitterModel.fix">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel.fix">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">fix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Зафиксировать параметры (ключ=значение).&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span></div>
+
+
+<div class="viewcode-block" id="FitterModel.free">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel.free">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">free</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">names</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Освободить ранее зафиксированные параметры.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Установка внешнего правдоподобия / априорной функции</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+<div class="viewcode-block" id="FitterModel.set_likelihood">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel.set_likelihood">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_likelihood</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">likelihood</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Установить пользовательский объект правдоподобия.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">likelihood</span><span class="p">,</span> <span class="n">BaseLikelihood</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;likelihood должен наследоваться от BaseLikelihood&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span> <span class="o">=</span> <span class="n">likelihood</span></div>
+
+
+<div class="viewcode-block" id="FitterModel.set_prior">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel.set_prior">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_prior</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prior_func</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Установить пользовательскую функцию априорной вероятности.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">prior_func</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_is_frozen</span><span class="p">():</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Проверить, запущена ли программа из собранного PyInstaller .exe.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="s1">&#39;frozen&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Запуск MCMC с нуля</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+<div class="viewcode-block" id="FitterModel.run_mcmc">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel.run_mcmc">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_mcmc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;sigma_int&#39;</span><span class="p">,</span> <span class="n">n_walkers</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">n_steps</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span>
+                 <span class="n">n_discard</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">n_cloud_points</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">cloud_seed</span><span class="o">=</span><span class="mi">42</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Запустить MCMC с начальными позициями.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        mode : str</span>
+<span class="sd">            &#39;sigma_int&#39; или &#39;clouds&#39;.</span>
+<span class="sd">        n_walkers : int</span>
+<span class="sd">            Число walkers.</span>
+<span class="sd">        n_steps : int</span>
+<span class="sd">            Число шагов.</span>
+<span class="sd">        n_discard : int</span>
+<span class="sd">            Число отбрасываемых шагов (burn‑in).</span>
+<span class="sd">        n_cloud_points : int</span>
+<span class="sd">            Размер облака точек (только для &#39;clouds&#39;).</span>
+<span class="sd">        cloud_seed : int</span>
+<span class="sd">            Seed для генератора облаков.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analysis_mode</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Этот объект загружен из пакета анализа. Запуск MCMC невозможен.&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_discard</span> <span class="o">=</span> <span class="n">n_discard</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_params</span><span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="n">n_walkers</span><span class="p">,</span> <span class="n">n_steps</span><span class="p">,</span> <span class="n">n_cloud_points</span><span class="p">,</span> <span class="n">cloud_seed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_data</span><span class="p">()</span>
+
+        <span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">ndim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_varying_info</span><span class="p">()</span>
+        <span class="n">p0</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initial_positions</span><span class="p">(</span><span class="n">n_walkers</span><span class="p">,</span> <span class="n">ndim</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_init_backend</span><span class="p">(</span><span class="n">n_walkers</span><span class="p">,</span> <span class="n">ndim</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_init_sampler</span><span class="p">(</span><span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">n_walkers</span><span class="p">)</span>
+
+        <span class="n">use_progress</span> <span class="o">=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_frozen</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">run_mcmc</span><span class="p">(</span><span class="n">p0</span><span class="p">,</span> <span class="n">n_steps</span><span class="p">,</span> <span class="n">progress</span><span class="o">=</span><span class="n">use_progress</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">MCMC прерван. Цепочка автоматически сохранена в бэкенде.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_finalise_after_interrupt</span><span class="p">(</span><span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">thin</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_finalise_successful</span><span class="p">(</span><span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">thin</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_varying_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Вернуть список варьируемых параметров, словарь фиксированных и размерность.&quot;&quot;&quot;</span>
+        <span class="n">varying</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_varying_at_run</span>
+        <span class="n">fixed_vals</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_names</span> <span class="k">if</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span><span class="p">}</span>
+        <span class="n">ndim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">varying</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">ndim</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initial_positions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_walkers</span><span class="p">,</span> <span class="n">ndim</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Сгенерировать начальные позиции walkers.&quot;&quot;&quot;</span>
+        <span class="n">low</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">[</span><span class="n">p</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_varying_at_run</span><span class="p">]</span>
+        <span class="n">high</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">[</span><span class="n">p</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_varying_at_run</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="n">high</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">(</span><span class="n">n_walkers</span><span class="p">,</span> <span class="n">ndim</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_init_backend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_walkers</span><span class="p">,</span> <span class="n">ndim</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Создать HDF5‑бэкенд для сохранения цепочки.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backend_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results_path</span><span class="p">,</span> <span class="s1">&#39;chain.h5&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backend</span> <span class="o">=</span> <span class="n">emcee</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">HDFBackend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend_file</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">n_walkers</span><span class="p">,</span> <span class="n">ndim</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_init_sampler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">n_walkers</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Создать объект EnsembleSampler.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span> <span class="o">=</span> <span class="n">emcee</span><span class="o">.</span><span class="n">EnsembleSampler</span><span class="p">(</span>
+            <span class="n">n_walkers</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">varying</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log_probability</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_names</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_default</span><span class="p">],</span>
+            <span class="n">backend</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span>
+        <span class="p">)</span>
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Возобновление прерванного MCMC</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+<div class="viewcode-block" id="FitterModel.resume_mcmc">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel.resume_mcmc">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">resume_mcmc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">extra_steps</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">thin</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Продолжить MCMC с того места, где он остановился.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        extra_steps : int</span>
+<span class="sd">            Дополнительные шаги сверх target_steps.</span>
+<span class="sd">        thin : int</span>
+<span class="sd">            Прореживание для финальной выборки.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_analysis_mode</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Этот объект загружен из пакета анализа. Запуск MCMC невозможен.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_backend</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_restore_metadata_if_needed</span><span class="p">()</span>
+
+        <span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_varying_info</span><span class="p">()</span>
+        <span class="n">remaining</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calc_remaining_steps</span><span class="p">(</span><span class="n">extra_steps</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">remaining</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Продолжаем с шага </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">iteration</span><span class="si">}</span><span class="s2">, осталось </span><span class="si">{</span><span class="n">remaining</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_init_sampler</span><span class="p">(</span><span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_walkers</span><span class="p">)</span>
+
+        <span class="n">use_progress</span> <span class="o">=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_frozen</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">run_mcmc</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">progress</span><span class="o">=</span><span class="n">use_progress</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Прервано. Цепочка сохранена.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_finalise_after_interrupt</span><span class="p">(</span><span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">thin</span><span class="o">=</span><span class="n">thin</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_finalise_successful</span><span class="p">(</span><span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">thin</span><span class="o">=</span><span class="n">thin</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_ensure_backend</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Убедиться, что бэкенд загружен.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">backend_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results_path</span><span class="p">,</span> <span class="s1">&#39;chain.h5&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">backend_path</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Backend не найден.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">backend</span> <span class="o">=</span> <span class="n">emcee</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">HDFBackend</span><span class="p">(</span><span class="n">backend_path</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_restore_metadata_if_needed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Загрузить метаданные, если они ещё не восстановлены.&quot;&quot;&quot;</span>
+        <span class="n">meta_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results_path</span><span class="p">,</span> <span class="s1">&#39;metadata.pkl&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">meta_path</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_varying_at_run</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">meta_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">meta</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">meta</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calc_remaining_steps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">extra_steps</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Вычислить оставшееся число шагов.&quot;&quot;&quot;</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_steps</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">iteration</span>
+        <span class="k">return</span> <span class="n">target</span> <span class="o">+</span> <span class="n">extra_steps</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">iteration</span>
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Загрузка сохранённого состояния</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+<div class="viewcode-block" id="FitterModel.load_state_from_backend">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel.load_state_from_backend">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_state_from_backend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Загрузить полное состояние из папки с chain.h5 и metadata.pkl.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        folder : str</span>
+<span class="sd">            Путь к папке.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results_path</span> <span class="o">=</span> <span class="n">folder</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backend_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="s1">&#39;chain.h5&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend_file</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Не найден </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">backend_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backend</span> <span class="o">=</span> <span class="n">emcee</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">HDFBackend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backend_file</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_metadata</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_init_likelihood</span><span class="p">()</span>
+        <span class="n">varying</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_varying_info</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span> <span class="o">=</span> <span class="n">emcee</span><span class="o">.</span><span class="n">EnsembleSampler</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n_walkers</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">varying</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log_probability</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">[</span><span class="n">varying</span><span class="p">,</span> <span class="p">{</span><span class="n">p</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_names</span> <span class="k">if</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span><span class="p">},</span>
+                  <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_names</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_default</span><span class="p">],</span>
+            <span class="n">backend</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backend</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">get_chain</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">get_chain</span><span class="p">(</span><span class="n">discard</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_discard</span><span class="p">,</span> <span class="n">thin</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">flat</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Загружено </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> шагов из </span><span class="si">{</span><span class="n">folder</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">folder</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Восстановить метаданные из metadata.pkl.&quot;&quot;&quot;</span>
+        <span class="n">meta_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">folder</span><span class="p">,</span> <span class="s1">&#39;metadata.pkl&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">meta_path</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Не найден </span><span class="si">{</span><span class="n">meta_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">meta_path</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">meta</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">key_map</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;_varying_at_run&#39;</span><span class="p">:</span> <span class="s1">&#39;varying_names&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_all_params_names&#39;</span><span class="p">:</span> <span class="s1">&#39;all_params_names&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_all_params_default&#39;</span><span class="p">:</span> <span class="s1">&#39;all_params_default&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_bounds&#39;</span><span class="p">:</span> <span class="s1">&#39;bounds&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;fixed&#39;</span><span class="p">:</span> <span class="s1">&#39;fixed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_mode_used&#39;</span><span class="p">:</span> <span class="s1">&#39;mode_used&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;target_steps&#39;</span><span class="p">:</span> <span class="s1">&#39;target_steps&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;n_walkers&#39;</span><span class="p">:</span> <span class="s1">&#39;n_walkers&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;n_discard&#39;</span><span class="p">:</span> <span class="s1">&#39;n_discard&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;median_params&#39;</span><span class="p">:</span> <span class="s1">&#39;median_params&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_arrays&#39;</span><span class="p">:</span> <span class="s1">&#39;_arrays&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;sn_df&#39;</span><span class="p">:</span> <span class="s1">&#39;sn_df&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;grb_df&#39;</span><span class="p">:</span> <span class="s1">&#39;grb_df&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;_clouds&#39;</span><span class="p">:</span> <span class="s1">&#39;_clouds&#39;</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">key_map</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">meta</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">meta</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+        <span class="k">if</span> <span class="s1">&#39;cosmo&#39;</span> <span class="ow">in</span> <span class="n">meta</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cosmo</span> <span class="o">=</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;cosmo&#39;</span><span class="p">]</span>
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Сохранение / загрузка пакета анализа</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+<div class="viewcode-block" id="FitterModel.save_analysis_package">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel.save_analysis_package">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_analysis_package</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Сохранить все данные, необходимые для воспроизведения графиков.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results_path</span><span class="p">,</span> <span class="s1">&#39;analysis&#39;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_chain_and_samples</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_median_params_json</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_metadata_json</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_dataframes_and_clouds</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_arrays</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Пакет анализа сохранён в: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_save_chain_and_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">chain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">get_chain</span><span class="p">(</span><span class="n">discard</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_discard</span><span class="p">,</span> <span class="n">thin</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">savez_compressed</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;chain.npz&#39;</span><span class="p">),</span> <span class="n">chain</span><span class="o">=</span><span class="n">chain</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">savez_compressed</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;samples.npz&#39;</span><span class="p">),</span> <span class="n">samples</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_save_median_params_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">median_params</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;median_params.json&#39;</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">ser</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="s1">&#39;item&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">median_params</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">ser</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_save_metadata_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;varying_names&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_varying_at_run</span><span class="p">,</span>
+            <span class="s1">&#39;all_params_names&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_names</span><span class="p">,</span>
+            <span class="s1">&#39;fixed&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span><span class="p">,</span>
+            <span class="s1">&#39;mode_used&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mode_used</span><span class="p">,</span>
+            <span class="s1">&#39;bounds&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span>
+            <span class="s1">&#39;n_walkers&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_walkers</span><span class="p">,</span>
+            <span class="s1">&#39;n_steps&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">,</span>
+            <span class="s1">&#39;n_discard&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_discard</span><span class="p">,</span>
+            <span class="s1">&#39;target_steps&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_steps</span>
+        <span class="p">}</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;metadata.json&#39;</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_save_dataframes_and_clouds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sn_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sn_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;sn_data.csv&#39;</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">grb_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grb_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;grb_data.csv&#39;</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clouds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;clouds.pkl&#39;</span><span class="p">),</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_clouds</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_save_arrays</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arrays</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">savez_compressed</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;arrays.npz&#39;</span><span class="p">),</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_arrays</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FitterModel.load_analysis_package">
+<a class="viewcode-back" href="../../core.fitter_model.html#core.fitter_model.FitterModel.load_analysis_package">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_analysis_package</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Загрузить пакет анализа и подготовиться к визуализации.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">&#39;/</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">))</span> <span class="ow">or</span> <span class="s1">&#39;.&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_metadata_json</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_chain_and_samples</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_dataframes_and_clouds</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_arrays</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_init_likelihood</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_analysis_mode</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Данные загружены из </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">. Графики будут сохранены в </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">results_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_metadata_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;metadata.json&#39;</span><span class="p">))</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">meta</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[(</span><span class="s1">&#39;_varying_at_run&#39;</span><span class="p">,</span> <span class="s1">&#39;varying_names&#39;</span><span class="p">),</span>
+                          <span class="p">(</span><span class="s1">&#39;_all_params_names&#39;</span><span class="p">,</span> <span class="s1">&#39;all_params_names&#39;</span><span class="p">),</span>
+                          <span class="p">(</span><span class="s1">&#39;_bounds&#39;</span><span class="p">,</span> <span class="s1">&#39;bounds&#39;</span><span class="p">),</span>
+                          <span class="p">(</span><span class="s1">&#39;fixed&#39;</span><span class="p">,</span> <span class="s1">&#39;fixed&#39;</span><span class="p">),</span>
+                          <span class="p">(</span><span class="s1">&#39;_mode_used&#39;</span><span class="p">,</span> <span class="s1">&#39;mode_used&#39;</span><span class="p">),</span>
+                          <span class="p">(</span><span class="s1">&#39;target_steps&#39;</span><span class="p">,</span> <span class="s1">&#39;target_steps&#39;</span><span class="p">),</span>
+                          <span class="p">(</span><span class="s1">&#39;n_walkers&#39;</span><span class="p">,</span> <span class="s1">&#39;n_walkers&#39;</span><span class="p">),</span>
+                          <span class="p">(</span><span class="s1">&#39;n_steps&#39;</span><span class="p">,</span> <span class="s1">&#39;n_steps&#39;</span><span class="p">),</span>
+                          <span class="p">(</span><span class="s1">&#39;n_discard&#39;</span><span class="p">,</span> <span class="s1">&#39;n_discard&#39;</span><span class="p">)]:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">meta</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">meta</span><span class="p">[</span><span class="s1">&#39;bounds&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;median_params.json&#39;</span><span class="p">))</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">median_params</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_chain_and_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="n">chain_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;chain.npz&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">chain_file</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">chain</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">chain_file</span><span class="p">)[</span><span class="s1">&#39;chain&#39;</span><span class="p">]</span>
+        <span class="n">samples_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;samples.npz&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">samples_file</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">samples_file</span><span class="p">)[</span><span class="s1">&#39;samples&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_dataframes_and_clouds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="n">sn_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;sn_data.csv&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sn_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">sn_file</span><span class="p">)</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">sn_file</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">grb_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;grb_data.csv&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grb_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">grb_file</span><span class="p">)</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">grb_file</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">clouds_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;clouds.pkl&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">clouds_file</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">clouds_file</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_clouds</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_clouds</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_arrays</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="n">arrays_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;arrays.npz&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">arrays_file</span><span class="p">):</span>
+            <span class="n">arrays</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">arrays_file</span><span class="p">,</span> <span class="n">allow_pickle</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">arrays</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">and</span> <span class="n">v</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">():</span>
+                    <span class="n">arrays</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_arrays</span> <span class="o">=</span> <span class="n">arrays</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_arrays</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Внутренние методы подготовки параметров и данных</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_folder</span><span class="p">(</span><span class="n">base</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Создать папку с меткой времени.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ts</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span><span class="p">)</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;run_</span><span class="si">{</span><span class="n">ts</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Результаты в: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">path</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Не удалось создать папку результатов, используется &#39;.&#39;&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="s1">&#39;.&#39;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_setup_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">n_walkers</span><span class="p">,</span> <span class="n">n_steps</span><span class="p">,</span> <span class="n">n_cloud_points</span><span class="p">,</span> <span class="n">cloud_seed</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Определить имена параметров, их границы и умолчания.&quot;&quot;&quot;</span>
+        <span class="n">has_sn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sn_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="n">has_grb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grb_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_data</span><span class="p">(</span><span class="n">has_sn</span><span class="p">,</span> <span class="n">has_grb</span><span class="p">)</span>
+
+        <span class="n">cosm_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;H0&#39;</span><span class="p">,</span> <span class="s1">&#39;Ode0&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="s1">&#39;Ok0&#39;</span><span class="p">]</span>   <span class="c1"># &lt;-- Ode0 вместо Om0</span>
+        <span class="n">amati_names</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">,</span> <span class="s1">&#39;k&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">has_grb</span> <span class="k">else</span> <span class="p">[]</span>
+        <span class="n">extra</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_select_extra_params</span><span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="n">has_grb</span><span class="p">,</span> <span class="n">n_cloud_points</span><span class="p">,</span> <span class="n">cloud_seed</span><span class="p">)</span>
+        <span class="n">all_names</span> <span class="o">=</span> <span class="n">cosm_names</span> <span class="o">+</span> <span class="n">amati_names</span> <span class="o">+</span> <span class="n">extra</span>
+
+        <span class="n">defaults</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;H0&#39;</span><span class="p">:</span> <span class="mf">70.0</span><span class="p">,</span> <span class="s1">&#39;Ode0&#39;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;Ok0&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                    <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="mf">45.0</span><span class="p">,</span> <span class="s1">&#39;k&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s1">&#39;sigma_int&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_names</span> <span class="o">=</span> <span class="n">all_names</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_default</span> <span class="o">=</span> <span class="p">[</span><span class="n">defaults</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">all_names</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_full_bounds</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">all_names</span><span class="p">}</span>
+
+        <span class="n">varying</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">all_names</span> <span class="k">if</span> <span class="n">p</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">varying</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Нет варьируемых параметров.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_varying_at_run</span> <span class="o">=</span> <span class="n">varying</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_steps</span> <span class="o">=</span> <span class="n">n_steps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_walkers</span> <span class="o">=</span> <span class="n">n_walkers</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">has_sn</span><span class="p">,</span> <span class="n">has_grb</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Проверить, что достаточно данных для оценки свободных параметров.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">has_sn</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">has_grb</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Нет данных.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">has_sn</span><span class="p">:</span>
+            <span class="n">free_cosm</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;H0&#39;</span><span class="p">,</span> <span class="s1">&#39;Ode0&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="s1">&#39;Ok0&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="n">p</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">free_cosm</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Без SN фиксируйте космологические параметры: &quot;</span> <span class="o">+</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">free_cosm</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_select_extra_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">has_grb</span><span class="p">,</span> <span class="n">n_cloud_points</span><span class="p">,</span> <span class="n">cloud_seed</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Выбрать дополнительные параметры в зависимости от режима GRB.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_mode_used</span> <span class="o">=</span> <span class="n">mode</span> <span class="k">if</span> <span class="n">has_grb</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">has_grb</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Режим: только сверхновые&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;sigma_int&#39;</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Режим: стандартный GRB с sigma_int&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[</span><span class="s1">&#39;sigma_int&#39;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s1">&#39;clouds&#39;</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Режим: облака точек (генерация внутри)&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_generate_clouds</span><span class="p">(</span><span class="n">n_cloud_points</span><span class="p">,</span> <span class="n">cloud_seed</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Неизвестный режим для GRB.&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_clouds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_points</span><span class="p">,</span> <span class="n">seed</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Сгенерировать облака точек для GRB.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">grb_df</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;GRB данные не загружены.&quot;</span><span class="p">)</span>
+        <span class="n">gen</span> <span class="o">=</span> <span class="n">GRBCloudGenerator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grb_df</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clouds</span> <span class="o">=</span> <span class="n">gen</span><span class="o">.</span><span class="n">generate_clouds</span><span class="p">(</span><span class="n">n_points</span><span class="o">=</span><span class="n">n_points</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Подготовить плоские массивы для быстрого доступа.&quot;&quot;&quot;</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_sn_data</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_grb_data</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_arrays</span> <span class="o">=</span> <span class="n">arr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_init_likelihood</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_sn_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arr</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sn_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sn_df</span>
+            <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;z_sn&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sn</span><span class="p">[</span><span class="s1">&#39;zcmb&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;mu_sn&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sn</span><span class="p">[</span><span class="s1">&#39;mu&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;dmu_sn&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sn</span><span class="p">[</span><span class="s1">&#39;dmu&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;z_sn&#39;</span><span class="p">,</span> <span class="s1">&#39;mu_sn&#39;</span><span class="p">,</span> <span class="s1">&#39;dmu_sn&#39;</span><span class="p">]:</span>
+                <span class="n">arr</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_grb_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arr</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mode_used</span> <span class="o">==</span> <span class="s1">&#39;clouds&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clouds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_cloud_data</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">grb_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_prepare_original_grb_data</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;z_grb&#39;</span><span class="p">,</span> <span class="s1">&#39;sbolo_grb&#39;</span><span class="p">,</span> <span class="s1">&#39;sbolo_err_grb&#39;</span><span class="p">,</span>
+                      <span class="s1">&#39;e_pi_grb&#39;</span><span class="p">,</span> <span class="s1">&#39;e_pi_err_l_grb&#39;</span><span class="p">,</span> <span class="s1">&#39;e_pi_err_u_grb&#39;</span><span class="p">]:</span>
+                <span class="n">arr</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+            <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;is_cloud&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_cloud_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arr</span><span class="p">):</span>
+        <span class="n">z_list</span><span class="p">,</span> <span class="n">s_list</span><span class="p">,</span> <span class="n">e_list</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clouds</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo_mc&#39;</span><span class="p">])</span>
+            <span class="n">z_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">entry</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]))</span>
+            <span class="n">s_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;sbolo_mc&#39;</span><span class="p">])</span>
+            <span class="n">e_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s1">&#39;e_pi_mc&#39;</span><span class="p">])</span>
+        <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;z_grb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">z_list</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;sbolo_grb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">s_list</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;e_pi_grb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">e_list</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;sbolo_err_grb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="s1">&#39;sbolo_grb&#39;</span><span class="p">])</span>
+        <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;e_pi_err_l_grb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="s1">&#39;e_pi_grb&#39;</span><span class="p">])</span>
+        <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;e_pi_err_u_grb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="s1">&#39;e_pi_grb&#39;</span><span class="p">])</span>
+        <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;is_cloud&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;n_grb_orig&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grb_df</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_prepare_original_grb_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arr</span><span class="p">):</span>
+        <span class="n">grb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grb_df</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="s1">&#39;sbolo&#39;</span><span class="p">,</span> <span class="s1">&#39;sbolo_err&#39;</span><span class="p">,</span> <span class="s1">&#39;e_pi&#39;</span><span class="p">,</span> <span class="s1">&#39;e_pi_err_l&#39;</span><span class="p">,</span> <span class="s1">&#39;e_pi_err_u&#39;</span><span class="p">]:</span>
+            <span class="n">arr</span><span class="p">[</span><span class="n">col</span> <span class="o">+</span> <span class="s1">&#39;_grb&#39;</span> <span class="k">if</span> <span class="n">col</span> <span class="o">!=</span> <span class="s1">&#39;z&#39;</span> <span class="k">else</span> <span class="s1">&#39;z_grb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">grb</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">arr</span><span class="p">[</span><span class="s1">&#39;is_cloud&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_init_likelihood</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Создать объект правдоподобия с текущими массивами.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span> <span class="o">=</span> <span class="n">AmatiSNLikelihood</span><span class="p">(</span>
+            <span class="n">cosmo</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cosmo</span><span class="p">,</span>
+            <span class="n">arrays</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_arrays</span><span class="p">,</span>
+            <span class="n">is_cloud</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_arrays</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;is_cloud&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Вычисление логарифмической вероятности</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_log_probability</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">all_names</span><span class="p">,</span> <span class="n">defaults</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Вычислить ln(правдоподобие) + ln(априорное).</span>
+
+<span class="sd">        Выполняет преобразование Ode0 → Om перед обновлением космологии.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">fixed_vals</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">abort_requested</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyboardInterrupt</span><span class="p">(</span><span class="s2">&quot;Прервано пользователем&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">varying</span><span class="p">,</span> <span class="n">theta</span><span class="p">):</span>
+            <span class="n">p</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">varying</span><span class="p">:</span>
+            <span class="n">low</span><span class="p">,</span> <span class="n">high</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">low</span> <span class="o">&lt;=</span> <span class="n">p</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">high</span><span class="p">):</span>
+                <span class="k">return</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+        <span class="c1"># Преобразование Ode0 → Om и обновление космологии</span>
+        <span class="n">Ode0</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Ode0&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">Ode0</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">Ok0</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Ok0&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">Om0</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">Ok0</span> <span class="o">-</span> <span class="n">Ode0</span>
+            <span class="n">p</span><span class="p">[</span><span class="s1">&#39;Om0&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Om0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cosmo</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">H0</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;H0&#39;</span><span class="p">,</span> <span class="mf">70.0</span><span class="p">),</span> <span class="n">Ode</span><span class="o">=</span><span class="n">Ode0</span><span class="p">,</span> <span class="n">Ok</span><span class="o">=</span><span class="n">Ok0</span><span class="p">,</span> <span class="n">w</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Если Ode0 не входит в параметры (старые конфигурации), используем Om напрямую</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cosmo</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">H0</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;H0&#39;</span><span class="p">,</span> <span class="mf">70.0</span><span class="p">),</span>
+                              <span class="n">Ode</span><span class="o">=</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Om0&#39;</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">)</span> <span class="o">-</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Ok0&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                              <span class="n">Ok</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Ok0&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="n">w</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">))</span>
+
+        <span class="n">loglike</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span><span class="o">.</span><span class="n">log_probability</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">all_names</span><span class="p">,</span> <span class="n">defaults</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logprior</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">logprior</span><span class="p">):</span>
+                <span class="k">return</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+            <span class="n">loglike</span> <span class="o">+=</span> <span class="n">logprior</span>
+        <span class="k">return</span> <span class="n">loglike</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">loglike</span><span class="p">)</span> <span class="k">else</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="c1"># Финализация MCMC</span>
+    <span class="c1"># -----------------------------------------------------------------</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_finalise_successful</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">thin</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Завершить успешный запуск MCMC.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">get_chain</span><span class="p">()</span>
+        <span class="n">discard</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_discard</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">get_chain</span><span class="p">(</span><span class="n">discard</span><span class="o">=</span><span class="n">discard</span><span class="p">,</span> <span class="n">thin</span><span class="o">=</span><span class="n">thin</span><span class="p">,</span> <span class="n">flat</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_empty_samples</span><span class="p">(</span><span class="n">discard</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_median</span><span class="p">(</span><span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_print_results</span><span class="p">(</span><span class="n">varying</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_metadata</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_finalise_after_interrupt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">,</span> <span class="n">thin</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Завершить прерванный MCMC.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">get_chain</span><span class="p">()</span>
+        <span class="n">discard</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_discard</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">get_chain</span><span class="p">(</span><span class="n">discard</span><span class="o">=</span><span class="n">discard</span><span class="p">,</span> <span class="n">thin</span><span class="o">=</span><span class="n">thin</span><span class="p">,</span> <span class="n">flat</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_empty_samples</span><span class="p">(</span><span class="n">discard</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_median</span><span class="p">(</span><span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_save_metadata</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_handle_empty_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">discard</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Обработать ситуацию, когда после discarding выборка пуста.&quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;После discarding и thinning выборка пуста. &quot;</span>
+                       <span class="s2">&quot;Увеличьте n_steps или уменьшите n_discard/thin.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">get_chain</span><span class="p">(</span><span class="n">discard</span><span class="o">=</span><span class="n">discard</span><span class="p">,</span> <span class="n">thin</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">flat</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Нет семплов даже без thinning. MCMC не дал результатов.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Использовано thin=1 для получения </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> семплов.&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_median</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">varying</span><span class="p">,</span> <span class="n">fixed_vals</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Вычислить медианные значения варьируемых параметров.&quot;&quot;&quot;</span>
+        <span class="n">medians</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">varying</span><span class="p">):</span>
+            <span class="n">medians</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]))</span>
+        <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">fixed_vals</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">medians</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">median_params</span> <span class="o">=</span> <span class="n">medians</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_save_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Сохранить метаданные для возможности возобновления.&quot;&quot;&quot;</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;varying_names&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_varying_at_run</span><span class="p">,</span>
+            <span class="s1">&#39;all_params_names&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_names</span><span class="p">,</span>
+            <span class="s1">&#39;all_params_default&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_default</span><span class="p">,</span>
+            <span class="s1">&#39;bounds&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bounds</span><span class="p">,</span>
+            <span class="s1">&#39;fixed&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="s1">&#39;mode_used&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mode_used</span><span class="p">,</span>
+            <span class="s1">&#39;target_steps&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_steps</span><span class="p">,</span>
+            <span class="s1">&#39;n_walkers&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_walkers</span><span class="p">,</span>
+            <span class="s1">&#39;n_discard&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_discard</span><span class="p">,</span>
+            <span class="s1">&#39;median_params&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">median_params</span><span class="p">,</span>
+            <span class="s1">&#39;cosmo&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cosmo</span><span class="p">,</span>
+            <span class="s1">&#39;_arrays&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_arrays</span><span class="p">,</span>
+            <span class="s1">&#39;sn_df&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">sn_df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sn_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;grb_df&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">grb_df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">grb_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;_clouds&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clouds</span>
+        <span class="p">}</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results_path</span><span class="p">,</span> <span class="s1">&#39;metadata.pkl&#39;</span><span class="p">),</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_print_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">varying</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Вывести медианные значения параметров с ошибками.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Нет семплов для отображения результатов.&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=== РЕЗУЛЬТАТЫ MCMC ===&quot;</span><span class="p">)</span>
+        <span class="n">ordered_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_all_params_names</span>
+        <span class="n">eng_labels</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;H0&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;$H_0$&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Ode0&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;$\Omega_</span><span class="si">{de}</span><span class="s1">$&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;w&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;$w$&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Ok0&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;$\Omega_k$&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;$a$&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;$b$&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;k&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;$k$&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;sigma_int&#39;</span><span class="p">:</span> <span class="sa">r</span><span class="s1">&#39;$\sigma_{\rm int}$&#39;</span>
+        <span class="p">}</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Медианные значения параметров (16, 50, 84 процентили):</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">ordered_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span><span class="p">:</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fixed</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">eng_labels</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">)</span><span class="si">:</span><span class="s2">15s</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">val</span><span class="si">:</span><span class="s2">8.3f</span><span class="si">}</span><span class="s2">  (фиксирован)&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">varying</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">idx</span> <span class="o">=</span> <span class="n">varying</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">vals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">samples</span><span class="p">[:,</span> <span class="n">idx</span><span class="p">]</span>
+                <span class="n">p16</span><span class="p">,</span> <span class="n">p50</span><span class="p">,</span> <span class="n">p84</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">vals</span><span class="p">,</span> <span class="p">[</span><span class="mi">16</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">84</span><span class="p">])</span>
+                <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;.3f&#39;</span> <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;Ode0&#39;</span> <span class="k">else</span> <span class="s1">&#39;.2f&#39;</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">eng_labels</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">)</span><span class="si">:</span><span class="s2">15s</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">p50</span><span class="si">:{</span><span class="n">fmt</span><span class="si">}}</span><span class="s2">  (-</span><span class="si">{</span><span class="n">p50</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">p16</span><span class="si">:{</span><span class="n">fmt</span><span class="si">}}</span><span class="s2"> / +</span><span class="si">{</span><span class="n">p84</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">p50</span><span class="si">:{</span><span class="n">fmt</span><span class="si">}}</span><span class="s2">)&quot;</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Daniel-Erkki Sonin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

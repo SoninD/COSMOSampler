@@ -1,0 +1,226 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>core.paths module &mdash; COSMOSampler  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="core.cosmology module" href="core.cosmology.html" />
+    <link rel="prev" title="core.constants module" href="core.constants.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            COSMOSampler
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Содержание</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">Модули проекта</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="core._numba_core.html">core._numba_core module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.constants.html">core.constants module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">core.paths module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#core.paths.ProjectPaths"><code class="docutils literal notranslate"><span class="pre">ProjectPaths</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#core.paths.ProjectPaths.data_dir"><code class="docutils literal notranslate"><span class="pre">ProjectPaths.data_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#core.paths.ProjectPaths.results_dir"><code class="docutils literal notranslate"><span class="pre">ProjectPaths.results_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#core.paths.ProjectPaths.gui_dir"><code class="docutils literal notranslate"><span class="pre">ProjectPaths.gui_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#core.paths.ProjectPaths.swift1_path"><code class="docutils literal notranslate"><span class="pre">ProjectPaths.swift1_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#core.paths.ProjectPaths.swift2_path"><code class="docutils literal notranslate"><span class="pre">ProjectPaths.swift2_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#core.paths.ProjectPaths.pantheon_path"><code class="docutils literal notranslate"><span class="pre">ProjectPaths.pantheon_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">ProjectPaths.data_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id1"><code class="docutils literal notranslate"><span class="pre">ProjectPaths.gui_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2"><code class="docutils literal notranslate"><span class="pre">ProjectPaths.pantheon_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3"><code class="docutils literal notranslate"><span class="pre">ProjectPaths.results_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4"><code class="docutils literal notranslate"><span class="pre">ProjectPaths.swift1_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5"><code class="docutils literal notranslate"><span class="pre">ProjectPaths.swift2_path()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="core.cosmology.html">core.cosmology module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.distributions.html">core.distributions module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.generators.html">core.generators module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.likelihoods.html">core.likelihoods module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.spectral_model.html">core.spectral_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="core.fitter_model.html">core.fitter_model module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.plots_result.html">analysis.plots_result module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.plots_spectra.html">analysis.plots_spectra module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analysis.plots_additional.html">analysis.plots_additional module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui.tools.html">gui.tools module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui.app.html">gui.app module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_config.html">run_config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="run_manual.html">run_manual module</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">COSMOSampler</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="modules.html">Модули проекта</a></li>
+      <li class="breadcrumb-item active">core.paths module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/core.paths.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-core.paths">
+<span id="core-paths-module"></span><h1>core.paths module<a class="headerlink" href="#module-core.paths" title="Link to this heading"></a></h1>
+<p>Централизованное управление путями проекта.
+Все пути абсолютные, отталкиваются от корня проекта (папка, содержащая core/).</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="core.paths.ProjectPaths">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">core.paths.</span></span><span class="sig-name descname"><span class="pre">ProjectPaths</span></span><a class="reference internal" href="_modules/core/paths.html#ProjectPaths"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.paths.ProjectPaths" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Предоставляет абсолютные пути к основным директориям и файлам данных.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="core.paths.ProjectPaths.data_dir">
+<span class="sig-name descname"><span class="pre">data_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="reference internal" href="_modules/core/paths.html#ProjectPaths.data_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.paths.ProjectPaths.data_dir" title="Link to this definition"></a></dt>
+<dd><p>Путь к папке data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.paths.ProjectPaths.results_dir">
+<span class="sig-name descname"><span class="pre">results_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="reference internal" href="_modules/core/paths.html#ProjectPaths.results_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.paths.ProjectPaths.results_dir" title="Link to this definition"></a></dt>
+<dd><p>Путь к папке results.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.paths.ProjectPaths.gui_dir">
+<span class="sig-name descname"><span class="pre">gui_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="reference internal" href="_modules/core/paths.html#ProjectPaths.gui_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.paths.ProjectPaths.gui_dir" title="Link to this definition"></a></dt>
+<dd><p>Путь к папке gui.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.paths.ProjectPaths.swift1_path">
+<span class="sig-name descname"><span class="pre">swift1_path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/paths.html#ProjectPaths.swift1_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.paths.ProjectPaths.swift1_path" title="Link to this definition"></a></dt>
+<dd><p>Путь к SWIFT1.txt.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.paths.ProjectPaths.swift2_path">
+<span class="sig-name descname"><span class="pre">swift2_path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/paths.html#ProjectPaths.swift2_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.paths.ProjectPaths.swift2_path" title="Link to this definition"></a></dt>
+<dd><p>Путь к SWIFT2.txt.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="core.paths.ProjectPaths.pantheon_path">
+<span class="sig-name descname"><span class="pre">pantheon_path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/paths.html#ProjectPaths.pantheon_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#core.paths.ProjectPaths.pantheon_path" title="Link to this definition"></a></dt>
+<dd><p>Путь к Pantheon.dat.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">data_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="reference internal" href="_modules/core/paths.html#ProjectPaths.data_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd><p>Вернуть путь к папке data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">gui_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="reference internal" href="_modules/core/paths.html#ProjectPaths.gui_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd><p>Вернуть путь к папке gui.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">pantheon_path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/paths.html#ProjectPaths.pantheon_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd><p>Вернуть абсолютный путь к Pantheon.dat.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">results_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="reference internal" href="_modules/core/paths.html#ProjectPaths.results_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd><p>Вернуть путь к папке results.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">swift1_path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/paths.html#ProjectPaths.swift1_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd><p>Вернуть абсолютный путь к SWIFT1.txt.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">swift2_path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/core/paths.html#ProjectPaths.swift2_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dd><p>Вернуть абсолютный путь к SWIFT2.txt.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="core.constants.html" class="btn btn-neutral float-left" title="core.constants module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="core.cosmology.html" class="btn btn-neutral float-right" title="core.cosmology module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Daniel-Erkki Sonin.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,7 @@
+analysis.plots\_additional module
+==================================
+
+.. automodule:: analysis.plots_additional
+   :members:
+   :undoc-members:
+   :show-inheritance:

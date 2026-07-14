@@ -1,0 +1,7 @@
+core.cosmology module
+======================
+
+.. automodule:: core.cosmology
+   :members:
+   :undoc-members:
+   :show-inheritance:
