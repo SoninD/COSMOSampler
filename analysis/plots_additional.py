@@ -31,6 +31,9 @@ class AdditionalPlotter:
         """Инициализировать плоттер и создать папку для сохранения."""
         self.output_dir = ProjectPaths().root / 'additional_plots'
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.font_axis_label = 14  # подписи осей (xlabel, ylabel)
+        self.font_tick_label = 10  # цифры на осях
+        self.font_legend = 12  # текст легенды
 
     # -----------------------------------------------------------------
     # Внутренние методы
@@ -71,7 +74,7 @@ class AdditionalPlotter:
         dist_e = SplitNormal(median=log_e_med, lower_err=log_e_err_left, upper_err=log_e_err_right)
         return dist_s, dist_e, sbolo, sbolo_err, e_pi, e_pi_err_l, e_pi_err_u
 
-    def _plot_histogram_with_pdf(self, ax, values, split_normal, orientation='vertical'):
+    def _plot_histogram_with_pdf(self, ax, values, split_normal, orientation='vertical', density=False):
         """
         Нарисовать гистограмму и теоретическую PDF SplitNormal.
 
@@ -85,13 +88,29 @@ class AdditionalPlotter:
             Объект распределения.
         orientation : str, optional
             'vertical' или 'horizontal'.
+        density : bool, optional
+            Если True, строится плотность вероятности.
+            Если False (по умолчанию), гистограмма показывает количество объектов в бине.
+            В обоих случаях PDF корректно масштабируется.
         """
         vmin, vmax = values.min(), values.max()
         bins = np.logspace(np.log10(vmin), np.log10(vmax), 50)
-        ax.hist(values, bins=bins, density=True, color='gray', alpha=0.5,
-                orientation=orientation)
+
+        # Рисуем гистограмму
+        counts, _, _ = ax.hist(values, bins=bins, density=density,
+                               color='gray', alpha=0.5, orientation=orientation)
+
+        # Строим PDF в том же масштабе
         grid = np.logspace(np.log10(vmin), np.log10(vmax), 200)
         pdf = split_normal.pdf(np.log10(grid)) / (grid * np.log(10))
+
+        if not density:
+            # Переводим PDF в количество: умножаем на общее число точек и среднюю ширину бинов
+            total_points = len(values)
+            bin_widths = np.diff(bins)
+            mean_bin_width = np.mean(bin_widths)
+            pdf *= total_points * mean_bin_width
+
         if orientation == 'vertical':
             ax.plot(grid, pdf, 'b-', lw=1.5)
         else:
@@ -173,8 +192,8 @@ class AdditionalPlotter:
         if log_scale:
             ax.set_xscale('log')
             ax.set_yscale('log')
-        ax.set_xlabel('S_bolo')
-        ax.set_ylabel('E_pi')
+        ax.set_xlabel(r'$S_{\rm bolo}$', fontsize=self.font_axis_label)
+        ax.set_ylabel(r'$E_{\rm pi}$', fontsize=self.font_axis_label)
         ax.set_title('All GRBs: clouds & observed errors')
         ax.legend()
         if not user_ax:
@@ -218,8 +237,8 @@ class AdditionalPlotter:
         if log_scale:
             ax.set_xscale('log')
             ax.set_yscale('log')
-        ax.set_xlabel('S_bolo')
-        ax.set_ylabel('E_pi')
+        ax.set_xlabel(r'$S_{\rm bolo}$', fontsize=self.font_axis_label)
+        ax.set_ylabel(r'$E_{\rm pi}$', fontsize=self.font_axis_label)
         ax.set_title('Selected GRBs (clouds) with all original data')
         ax.legend()
         if not user_ax:
@@ -242,36 +261,63 @@ class AdditionalPlotter:
             ax_main, ax_top, ax_right = axes['main'], axes['top'], axes['right']
             fig = ax_main.figure
         else:
-            fig = plt.figure(figsize=(10, 8))
+            fig = plt.figure(figsize=(12, 12))
             gs = fig.add_gridspec(2, 2, width_ratios=(4, 1), height_ratios=(1, 4),
                                   left=0.1, right=0.9, bottom=0.1, top=0.9,
-                                  wspace=0.05, hspace=0.05)
+                                  wspace=0.15, hspace=0.15)
             ax_main = fig.add_subplot(gs[1, 0])
             ax_top = fig.add_subplot(gs[0, 0], sharex=ax_main)
             ax_right = fig.add_subplot(gs[1, 1], sharey=ax_main)
 
-        plt.setp(ax_top.get_xticklabels(), visible=False)
-        plt.setp(ax_right.get_yticklabels(), visible=False)
+        # Переносим оси на противоположные стороны
+        ax_top.xaxis.set_ticks_position('top')
+        ax_top.xaxis.set_label_position('top')
+        ax_right.yaxis.set_ticks_position('right')
+        ax_right.yaxis.set_label_position('right')
+
+        # Увеличиваем подписи тиков основного графика (S_bolo и E_pi) прямым перебором (не работает)
+        for label in ax_main.get_xticklabels():
+            label.set_fontsize(self.font_tick_label)
+        for label in ax_main.get_yticklabels():
+            label.set_fontsize(self.font_tick_label)
+
+        # Дополнительные оси плотности (не поделены с основным графиком) можно настроить через tick_params
+        ax_top.tick_params(axis='y', labelsize=self.font_tick_label)
+        ax_right.tick_params(axis='x', labelsize=self.font_tick_label)
 
         n_points = len(entry['sbolo_mc'])
+        # облака точек
         ax_main.scatter(entry['sbolo_mc'], entry['e_pi_mc'], s=1, alpha=0.1,
                         color='gray', label=f'MC (N={n_points})')
+        # наблюдаемая точка с именем GRB
         ax_main.errorbar(sbolo, e_pi,
                          xerr=sbolo_err,
                          yerr=[[e_pi_err_l], [e_pi_err_u]],
-                         fmt='o', color='red', capsize=5, label='Observed')
+                         fmt='o', color='red', capsize=5, label=grb_name)
 
         if log_scale:
             ax_main.set_xscale('log')
             ax_main.set_yscale('log')
-        ax_main.set_xlabel('S_bolo')
-        ax_main.set_ylabel('E_pi')
+        ax_main.set_xlabel(r'$S_{\rm bolo}$', fontsize=self.font_axis_label)
+        ax_main.set_ylabel(r'$E_{\rm pi}$', fontsize=self.font_axis_label)
         ax_main.legend()
-        ax_main.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'$10^{{{int(np.log10(x))}}}$' if x > 0 else ''))
-        ax_main.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'$10^{{{int(np.log10(y))}}}$' if y > 0 else ''))
 
-        self._plot_histogram_with_pdf(ax_top, entry['sbolo_mc'], dist_s, 'vertical')
-        self._plot_histogram_with_pdf(ax_right, entry['e_pi_mc'], dist_e, 'horizontal')
+        # увеличиваем точку облака в легенде и делаем её полностью непрозрачной
+        leg = ax_main.get_legend()
+        if leg:
+            for handle in leg.legend_handles:
+                if hasattr(handle, 'get_label') and handle.get_label().startswith('MC'):
+                    handle.set_sizes([10])  # увеличен размер маркера
+                    handle.set_alpha(1.0)
+
+        # формат тиков основного графика (степени)
+        ax_main.xaxis.set_major_formatter(
+            plt.FuncFormatter(lambda x, _: f'$10^{{{int(np.log10(x))}}}$' if x > 0 else ''))
+        ax_main.yaxis.set_major_formatter(
+            plt.FuncFormatter(lambda y, _: f'$10^{{{int(np.log10(y))}}}$' if y > 0 else ''))
+
+        self._plot_histogram_with_pdf(ax_top, entry['sbolo_mc'], dist_s, 'vertical', density=False)
+        self._plot_histogram_with_pdf(ax_right, entry['e_pi_mc'], dist_e, 'horizontal', density=False)
 
         for val, ls in zip([sbolo, sbolo - sbolo_err, sbolo + sbolo_err], ['-', '--', '--']):
             ax_top.axvline(val, color='k', linestyle=ls, linewidth=0.8)
@@ -280,7 +326,6 @@ class AdditionalPlotter:
             ax_right.axhline(val, color='k', linestyle=ls, linewidth=0.8)
             ax_main.axhline(val, color='k', linestyle=ls, linewidth=0.5, alpha=0.5)
 
-        ax_main.set_title(f'GRB {grb_name}')
         if axes is None:
             plt.tight_layout()
             if save:
