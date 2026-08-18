@@ -31,8 +31,8 @@ class AdditionalPlotter:
         """Инициализировать плоттер и создать папку для сохранения."""
         self.output_dir = ProjectPaths().root / 'additional_plots'
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.font_axis_label = 14  # подписи осей (xlabel, ylabel)
-        self.font_tick_label = 10  # цифры на осях
+        self.font_axis_label = 14 # подписи осей (xlabel, ylabel)
+        self.font_tick_label = 14  # цифры на осях
         self.font_legend = 12  # текст легенды
 
     # -----------------------------------------------------------------
@@ -119,7 +119,7 @@ class AdditionalPlotter:
     # -----------------------------------------------------------------
     # Публичные методы построения
     # -----------------------------------------------------------------
-    def plot_clouds(self, clouds, grb_names=None, log_scale=True,
+    def plot_clouds(self, clouds, grb_names=None, log_scale=False,
                     save=False, save_path=None, ax=None, axes_dict=None):
         """
         Универсальная отрисовка облаков точек.
@@ -251,6 +251,7 @@ class AdditionalPlotter:
 
     def _plot_single_grb(self, clouds, grb_name, log_scale, save, save_path, axes):
         """Детальный график одного GRB: scatter + гистограммы + PDF."""
+
         entry = next((e for e in clouds if e['GRBname'] == grb_name), None)
         if entry is None:
             raise ValueError(f"GRB {grb_name} не найден в облаках.")
@@ -265,60 +266,101 @@ class AdditionalPlotter:
             gs = fig.add_gridspec(2, 2, width_ratios=(4, 1), height_ratios=(1, 4),
                                   left=0.1, right=0.9, bottom=0.1, top=0.9,
                                   wspace=0.15, hspace=0.15)
+            # ИСПРАВЛЕНО: Возвращены точные индексы ячеек сетки gridspec
             ax_main = fig.add_subplot(gs[1, 0])
             ax_top = fig.add_subplot(gs[0, 0], sharex=ax_main)
             ax_right = fig.add_subplot(gs[1, 1], sharey=ax_main)
 
-        # Переносим оси на противоположные стороны
-        ax_top.xaxis.set_ticks_position('top')
-        ax_top.xaxis.set_label_position('top')
-        ax_right.yaxis.set_ticks_position('right')
-        ax_right.yaxis.set_label_position('right')
+        # === НАСТРОЙКА ДОПОЛНИТЕЛЬНЫХ ОСЕЙ (Только черточки, без цифр на смежных осях) ===
 
-        # Увеличиваем подписи тиков основного графика (S_bolo и E_pi) прямым перебором (не работает)
-        for label in ax_main.get_xticklabels():
-            label.set_fontsize(self.font_tick_label)
-        for label in ax_main.get_yticklabels():
-            label.set_fontsize(self.font_tick_label)
+        # На ax_top убираем нижние деления, включаем верхние деления, но выключаем цифры по X
+        ax_top.tick_params(axis='x', which='both', bottom=True, top=False, labelbottom=False, labeltop=False)
 
-        # Дополнительные оси плотности (не поделены с основным графиком) можно настроить через tick_params
-        ax_top.tick_params(axis='y', labelsize=self.font_tick_label)
-        ax_right.tick_params(axis='x', labelsize=self.font_tick_label)
+        # На ax_right убираем левые деления, включаем правые деления, но выключаем цифры по Y
+        ax_right.tick_params(axis='y', which='both', left=True, right=False, labelleft=False, labelright=False)
 
+        # Шкалы плотности гистограмм (Y для ax_top и X для ax_right) отображаются со своими цифрами
+        ax_top.tick_params(axis='y', which='both', labelsize=self.font_tick_label)
+        ax_right.tick_params(axis='x', which='both', labelsize=self.font_tick_label)
+
+        # Шрифт для тиков основного графика (базовый)
+        ax_main.tick_params(axis='both', which='both', labelsize=self.font_tick_label)
+
+        # Облака точек
         n_points = len(entry['sbolo_mc'])
-        # облака точек
-        ax_main.scatter(entry['sbolo_mc'], entry['e_pi_mc'], s=1, alpha=0.1,
+        ax_main.scatter(entry['sbolo_mc'], entry['e_pi_mc'], s=2, alpha=0.5,
                         color='gray', label=f'MC (N={n_points})')
-        # наблюдаемая точка с именем GRB
+
+        # Наблюдаемая точка с именем GRB
         ax_main.errorbar(sbolo, e_pi,
                          xerr=sbolo_err,
                          yerr=[[e_pi_err_l], [e_pi_err_u]],
                          fmt='o', color='red', capsize=5, label=grb_name)
 
+        # === ФОРМАТИРОВАНИЕ ОСЕЙ И ВЫНОС МНОЖИТЕЛЯ ===
         if log_scale:
             ax_main.set_xscale('log')
             ax_main.set_yscale('log')
-        ax_main.set_xlabel(r'$S_{\rm bolo}$', fontsize=self.font_axis_label)
-        ax_main.set_ylabel(r'$E_{\rm pi}$', fontsize=self.font_axis_label)
-        ax_main.legend()
 
-        # увеличиваем точку облака в легенде и делаем её полностью непрозрачной
-        leg = ax_main.get_legend()
-        if leg:
-            for handle in leg.legend_handles:
-                if hasattr(handle, 'get_label') and handle.get_label().startswith('MC'):
-                    handle.set_sizes([10])  # увеличен размер маркера
-                    handle.set_alpha(1.0)
+            # Стандартные логарифмические подписи Matplotlib со степенями
+            #from matplotlib.ticker import LogFormatterSciNotation
+            #ax_main.xaxis.set_major_formatter(LogFormatterSciNotation(base=10.0))
+            #ax_main.yaxis.set_major_formatter(LogFormatterSciNotation(base=10.0))
 
-        # формат тиков основного графика (степени)
-        ax_main.xaxis.set_major_formatter(
-            plt.FuncFormatter(lambda x, _: f'$10^{{{int(np.log10(x))}}}$' if x > 0 else ''))
-        ax_main.yaxis.set_major_formatter(
-            plt.FuncFormatter(lambda y, _: f'$10^{{{int(np.log10(y))}}}$' if y > 0 else ''))
+            # Стандартные названия осей без изменений
+            ax_main.set_xlabel(r'$S_{\rm bolo}$', fontsize=self.font_axis_label)
+            ax_main.set_ylabel(r'$E_{{\rm p},i}$', fontsize=self.font_axis_label)
 
+            # Фиксация размера шрифта для логарифмической шкалы
+            ax_main.tick_params(axis='both', which='both', labelsize=self.font_tick_label)
+        else:
+            # === Вариант для линейной шкалы (log_scale=False) ===
+            x_min, x_max = np.min(entry['sbolo_mc']), np.max(entry['sbolo_mc'])
+            y_min, y_max = np.min(entry['e_pi_mc']), np.max(entry['e_pi_mc'])
+
+            x_order = int(np.floor(np.log10(np.sqrt(x_min * x_max))))
+            y_order = int(np.floor(np.log10(np.sqrt(y_min * y_max))))
+
+            # Форматируем тики: делим каждое значение на вычисленный порядок
+            ax_main.xaxis.set_major_formatter(
+                plt.FuncFormatter(lambda x, _: f"${x / 10 ** x_order:.1f}$" if x > 0 else ""))
+            ax_main.yaxis.set_major_formatter(
+                plt.FuncFormatter(lambda y, _: f"${y / 10 ** y_order:.1f}$" if y > 0 else ""))
+
+            # Выносим общий множитель в названия осей в квадратных скобках
+            ax_main.set_xlabel(r'$S_{\rm bolo}$' + f' [$\\times 10^{{{x_order}}}$]', fontsize=self.font_axis_label)
+            ax_main.set_ylabel(r'$E_{{\rm p},i}$' + f' [$\\times 10^{{{y_order}}}$]', fontsize=self.font_axis_label)
+
+            # Фиксация размера шрифта для линейной шкалы (применяется поверх FuncFormatter)
+            ax_main.tick_params(axis='both', which='both', labelsize=self.font_tick_label)
+
+            # === НАСТРОЙКА ЛЕГЕНДЫ ===
+            from matplotlib.legend_handler import HandlerErrorbar
+
+            # Задаем параметры уменьшения "усов" погрешности в легенде (уменьшаем xerr_size и yerr_size до 0.1 или 0)
+            # Если поставить 0, то в легенде останется просто чистая точка.
+            ax_main.legend(
+                numpoints=1,
+                handler_map={
+                    plt.matplotlib.container.ErrorbarContainer: HandlerErrorbar(xerr_size=0.7, yerr_size=0.7)
+                }
+            )
+
+            # Оставляем логику увеличения точки MC, так как она работала корректно
+            leg = ax_main.get_legend()
+            if leg:
+                for text, handle in zip(leg.get_texts(), leg.legend_handles):
+                    if text.get_text().startswith('MC'):
+                        if hasattr(handle, 'set_sizes'):
+                            handle.set_sizes([10])
+                            handle.set_alpha(1.0)
+
+
+        # Отрисовка гистограмм
         self._plot_histogram_with_pdf(ax_top, entry['sbolo_mc'], dist_s, 'vertical', density=False)
         self._plot_histogram_with_pdf(ax_right, entry['e_pi_mc'], dist_e, 'horizontal', density=False)
 
+        # Добавление вспомогательных линий
         for val, ls in zip([sbolo, sbolo - sbolo_err, sbolo + sbolo_err], ['-', '--', '--']):
             ax_top.axvline(val, color='k', linestyle=ls, linewidth=0.8)
             ax_main.axvline(val, color='k', linestyle=ls, linewidth=0.5, alpha=0.5)
@@ -332,6 +374,7 @@ class AdditionalPlotter:
                 fname = save_path or str(self.output_dir / f'cloud_{grb_name}.png')
                 plt.savefig(fname, dpi=150)
                 logger.info(f"График GRB {grb_name} сохранён: {fname}")
+
         return fig, (ax_main, ax_top, ax_right)
 
     # -----------------------------------------------------------------

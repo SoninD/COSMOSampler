@@ -74,10 +74,10 @@ class ResultPlotter:
         self.model = model
         self.results_path = model.results_path
         # Размеры шрифтов (единые для всех графиков)
-        self.font_axis_label = 14  # подписи осей (xlabel, ylabel)
-        self.font_tick_label = 14  # цифры на осях
+        self.font_axis_label = 15  # подписи осей (xlabel, ylabel)
+        self.font_tick_label = 15  # цифры на осях
         self.font_legend = 12  # текст легенды
-        self.font_diag_title = 12  # заголовки на диагонали corner plot
+        self.font_diag_title = 13  # заголовки на диагонали corner plot
         self.font_suptitle = 18  # общий заголовок фигуры
 
     # -----------------------------------------------------------------
@@ -103,7 +103,7 @@ class ResultPlotter:
         if not z_parts:
             return None, None
         z_all = np.concatenate(z_parts)
-        z_smooth = np.linspace(z_all.min() * 0.9, z_all.max() * 1.1, 200)
+        z_smooth = np.linspace(z_all.min() * 0.9, z_all.max() * 1.25, 200)
         return z_all, z_smooth
 
     def _get_info_labels(self, arr):
@@ -137,16 +137,28 @@ class ResultPlotter:
 
     def _plot_theoretical_curves(self, ax, z_smooth, cosmo):
         """Нарисовать теоретические кривые ΛCDM и wCDM."""
+        # Медианные параметры для подписи
+        mp = self.model.median_params
+
         # wCDM (median)
         mu_wcdm = cosmo.mu(z_smooth)
-        ax.plot(z_smooth, mu_wcdm, 'k--', lw=2, label='wCDM (median)')
+        # Формируем подпись с медианными значениями космологических параметров
+        label_wcdm = (
+            r'$w$CDM ('
+            rf'$H_0={mp.get("H0", 70.0):.1f}$, '
+            rf'$\Omega_{{de}}={mp.get("Ode0", 0.7):.2f}$, '
+            rf'$w={mp.get("w", -1.0):.2f}$)'
+            #rf'$\Omega_k={mp.get("Ok0", 0.0): .2f}$)'
+        )
+        ax.plot(z_smooth, mu_wcdm, 'k--', lw=2, label=label_wcdm)
+
         # ΛCDM (flat, w=-1)
         cosmo_flat = copy.deepcopy(self.model.cosmo)
-        cosmo_flat.update(H0=70, Ode=0.7, Ok=0.0, w=-1.0)   # плоская ΛCDM
+        cosmo_flat.update(H0=70, Ode=0.7, Ok=0.0, w=-1.0)  # плоская ΛCDM
         mu_lcdm = cosmo_flat.mu(z_smooth)
-        ax.plot(z_smooth, mu_lcdm, 'g-', lw=1.5, alpha=0.7, label=r'$\Lambda$CDM (flat, w=-1)')
+        ax.plot(z_smooth, mu_lcdm, 'g-', lw=1.5, alpha=0.7, label=r'$\Lambda$CDM')
+
         # Вернуть медианные параметры
-        mp = self.model.median_params
         cosmo.update(H0=mp.get('H0', 70.0),
                      Ode=mp.get('Ode0', 0.7),
                      w=mp.get('w', -1.0),
@@ -305,14 +317,14 @@ class ResultPlotter:
         # Гарантируем одинаковый масштаб по X
         ax2.set_xlim(ax1.get_xlim())
 
-        ax1.legend(loc='lower right', fontsize=self.font_legend)
+        ax1.legend(loc='lower right', fontsize=self.font_legend, framealpha=1, edgecolor='black', fancybox=True)
         ax1.set_ylabel(r'$\mu$', fontsize=self.font_axis_label)
         ax1.grid(True, alpha=0.3)
         ax2.axhline(0, color='black', linestyle='--', lw=2)
         ax2.set_xlabel('Redshift z', fontsize=self.font_axis_label)
         ax2.set_ylabel(r'$\Delta\mu$', fontsize=self.font_axis_label)
         if len(arr.get('z_grb', [])) > 0:
-            ax2.legend(loc='lower right', fontsize=self.font_legend)
+            ax2.legend(loc='lower right', fontsize=self.font_legend, framealpha=1, edgecolor='black', fancybox=True)
         # Увеличиваем серую точку облаков только в легенде
         for legend_ax in [ax1, ax2]:
             leg = legend_ax.get_legend()
@@ -323,6 +335,9 @@ class ResultPlotter:
                     handle.set_sizes([10])  # размер маркера в легенде
                     handle.set_alpha(1.0)  # Непрозрачность маркера
         ax2.grid(True, alpha=0.3)
+
+        for ax in fig.axes:
+            ax.tick_params(labelsize=self.font_tick_label)
 
         if save_this:
             plt.subplots_adjust(left=0.12, bottom=0.1, right=0.95, top=0.95, hspace=0.25)
@@ -353,7 +368,7 @@ class ResultPlotter:
         p16, p50, p84 = _percentiles(samples)
         fmt = '.3f' if param_name == 'Ode0' else '.2f'
         ax.legend([line], [_label_with_errors(param_name, p16, p50, p84, fmt)],
-                  fontsize=legend_size)
+                  fontsize=legend_size, loc='lower right')
         ax.set_ylabel(PARAM_LABELS.get(param_name, param_name), fontsize=axis_size)
         ax.tick_params(labelsize=tick_size)
         ax.grid(True, alpha=0.3)
@@ -522,7 +537,7 @@ class ResultPlotter:
             if param in ('H0', 'b'):
                 fmt = '.1f'
             elif param == 'Ode0':
-                fmt = '.3f'
+                fmt = '.2f'
             else:
                 fmt = '.2f'
 
